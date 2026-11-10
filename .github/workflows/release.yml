@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository_owner == 'themanoftalent'
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Parse version from tag
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version tag format: $REF_NAME"
+            exit 1
+          fi
+          TAG="${REF_NAME#v}"
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=${REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Build archive
+        run: |
+          xcodebuild archive \
+            -project Bootayar.xcodeproj \
+            -scheme Bootayar \
+            -configuration Release \
+            -archivePath /tmp/Bootayar.xcarchive \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM=""
+
+      - name: Package DMG
+        run: |
+          APP_PATH=$(find /tmp/Bootayar.xcarchive -name "Bootayar.app" -maxdepth 5 | head -1)
+          chmod +x scripts/create-dmg scripts/package-dmg.sh
+          ./scripts/package-dmg.sh "$APP_PATH" /tmp/Bootayar.dmg
+
+      - name: Compute SHA256
+        id: sha
+        run: echo "sha256=$(shasum -a 256 /tmp/Bootayar.dmg | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          chmod +x scripts/extract-changelog.sh
+          ./scripts/extract-changelog.sh "$VERSION" > /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release create "$TAG" /tmp/Bootayar.dmg \
+            --title "$TAG" \
+            --notes-file /tmp/release-notes.md \
+            --repo "$REPO"

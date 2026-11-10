@@ -1,0 +1,1832 @@
+import XCTest
+@testable import Bootayar
+
+private struct NoopShell: ShellRunner {
+    func run(_ path: String, arguments: [String]) throws -> String { "" }
+}
+
+// MARK: - LaunchctlService Tests
+
+final class LaunchctlServiceTests: XCTestCase {
+    func test_parseListOutput_running() {
+        let output = "PID\tStatus\tLabel\n636\t0\tcom.syncthing.start\n"
+        let result = LaunchctlService().parseListOutput(output)
+        XCTAssertEqual(result["com.syncthing.start"]?.pid, 636)
+        XCTAssertEqual(result["com.syncthing.start"]?.exitCode, 0)
+    }
+
+    func test_parseListOutput_stopped() {
+        let output = "PID\tStatus\tLabel\n-\t0\tcom.syncthing.stop\n"
+        let result = LaunchctlService().parseListOutput(output)
+        XCTAssertNil(result["com.syncthing.stop"]?.pid)
+        XCTAssertEqual(result["com.syncthing.stop"]?.exitCode, 0)
+    }
+
+    func test_parseListOutput_failed() {
+        let output = "PID\tStatus\tLabel\n-\t1\tcom.example.failed\n"
+        let result = LaunchctlService().parseListOutput(output)
+        XCTAssertNil(result["com.example.failed"]?.pid)
+        XCTAssertEqual(result["com.example.failed"]?.exitCode, 1)
+    }
+
+    func test_parseListOutput_emptyLines() {
+        let output = "PID\tStatus\tLabel\n636\t0\tcom.foo\n\n"
+        let result = LaunchctlService().parseListOutput(output)
+        XCTAssertEqual(result.count, 1)
+    }
+
+    func test_parseDisabledLabels() {
+        let output = """
+        disabled services = {
+            "com.example.disabled" => disabled
+            "com.example.enabled" => enabled
+        }
+        """
+        let labels = LaunchctlService.parseDisabledLabels(output)
+        XCTAssertEqual(labels, ["com.example.disabled"])
+    }
+}
+
+// MARK: - PlistService Tests
+
+final class PlistServiceTests: XCTestCase {
+    var tmpDir: URL!
+    let svc = PlistService()
+
+    override func setUp() {
+        tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try! FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDown() {
+        try? FileManager.default.removeItem(at: tmpDir)
+    }
+
+    func test_parsePlist_calendarTrigger() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.calendar</string>
+            <key>ProgramArguments</key>
+            <array><string>/usr/bin/open</string><string>-a</string><string>Syncthing</string></array>
+            <key>StartCalendarInterval</key>
+            <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+            <key>RunAtLoad</key><false/>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.calendar.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+
+        let item = svc.parsePlist(at: url, scope: .userAgent)
+        XCTAssertEqual(item?.label, "com.test.calendar")
+        XCTAssertEqual(item?.program, "/usr/bin/open")
+        XCTAssertEqual(item?.programArguments, ["-a", "Syncthing"])
+        XCTAssertEqual(item?.calendarIntervals.count, 1)
+        XCTAssertEqual(item?.calendarIntervals.first?.hour, 8)
+        XCTAssertEqual(item?.calendarIntervals.first?.minute, 0)
+        XCTAssertNil(item?.calendarIntervals.first?.weekday)
+    }
+
+    func test_parsePlist_intervalTrigger() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.interval</string>
+            <key>Program</key><string>/usr/local/bin/mytool</string>
+            <key>StartInterval</key><integer>300</integer>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.interval.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+
+        let item = svc.parsePlist(at: url, scope: .userAgent)
+        XCTAssertEqual(item?.calendarIntervals.count, 0)
+        XCTAssertEqual(item?.startInterval, 300)
+        XCTAssertEqual(item?.program, "/usr/local/bin/mytool")
+    }
+
+    func test_parsePlist_workingDirectory() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.cwd</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>WorkingDirectory</key><string>/Users/darwin/project</string>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.cwd.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let item = svc.parsePlist(at: url, scope: .userAgent)
+        XCTAssertEqual(item?.workingDirectory, "/Users/darwin/project")
+    }
+
+    func test_roundtrip_workingDirectory() throws {
+        let original = LaunchItem(
+            label: "com.test.cwd",
+            plistURL: tmpDir.appendingPathComponent("com.test.cwd.plist"),
+            scope: .userAgent,
+            program: "/bin/echo",
+            programArguments: [],
+            calendarIntervals: [],
+            startInterval: nil,
+            watchPaths: [],
+            runAtLoad: true,
+            keepAlive: false,
+            standardOutPath: nil,
+            standardErrorPath: nil,
+            workingDirectory: "/tmp/work",
+            isLoaded: false,
+            pid: nil,
+            lastExitCode: nil
+        )
+        try svc.save(original, privilege: PrivilegeService())
+        let parsed = svc.parsePlist(at: original.plistURL, scope: .userAgent)
+        XCTAssertEqual(parsed?.workingDirectory, "/tmp/work")
+    }
+
+    func test_extraKeys_detectsUnknownKeys() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.extra</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>MachServices</key><dict/>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.extra.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let dict = try svc.readDictionary(from: url)
+        XCTAssertEqual(svc.extraKeys(in: dict), ["MachServices"])
+        XCTAssertNil(svc.formIncompatibilityReason(for: dict))
+    }
+
+    func test_formIncompatibility_queueDirectoriesCompatible() throws {
+        let dict: [String: Any] = [
+            "Label": "com.test.qd",
+            "Program": "/bin/echo",
+            "QueueDirectories": ["/tmp/queue"],
+        ]
+        XCTAssertEqual(svc.extraKeys(in: dict), ["QueueDirectories"])
+        XCTAssertNil(svc.formIncompatibilityReason(for: dict))
+    }
+
+    func test_formIncompatibility_keepAliveNonBool() {
+        let dict: [String: Any] = [
+            "Label": "com.test.ka",
+            "Program": "/bin/echo",
+            "KeepAlive": ["SuccessfulExit": false],
+        ]
+        let reason = svc.formIncompatibilityReason(for: dict)
+        XCTAssertNotNil(reason)
+        XCTAssertTrue(reason?.contains("KeepAlive") == true)
+    }
+
+    func test_roundtrip_environmentVariables() throws {
+        let original = LaunchItem(
+            label: "com.test.env",
+            plistURL: tmpDir.appendingPathComponent("com.test.env.plist"),
+            scope: .userAgent,
+            program: "/bin/echo",
+            programArguments: [],
+            calendarIntervals: [],
+            startInterval: nil,
+            watchPaths: [],
+            runAtLoad: true,
+            keepAlive: false,
+            standardOutPath: nil,
+            standardErrorPath: nil,
+            workingDirectory: nil,
+            environmentVariables: ["NODE_ENV": "production", "PATH": "/usr/local/bin:/usr/bin"],
+            isLoaded: false,
+            pid: nil,
+            lastExitCode: nil
+        )
+        try svc.save(original, privilege: PrivilegeService())
+        let parsed = svc.parsePlist(at: original.plistURL, scope: .userAgent)
+        XCTAssertEqual(parsed?.environmentVariables, original.environmentVariables)
+    }
+
+    func test_roundtrip() throws {
+        let original = LaunchItem(
+            label: "com.test.roundtrip",
+            plistURL: tmpDir.appendingPathComponent("com.test.roundtrip.plist"),
+            scope: .userAgent,
+            program: "/bin/echo",
+            programArguments: ["hello"],
+            calendarIntervals: [LaunchItem.CalendarInterval(weekday: nil, hour: 9, minute: 30)],
+            startInterval: nil,
+            watchPaths: [],
+            runAtLoad: true,
+            keepAlive: false,
+            standardOutPath: "/tmp/out.log",
+            standardErrorPath: nil,
+            workingDirectory: nil,
+            isLoaded: false,
+            pid: nil,
+            lastExitCode: nil
+        )
+        try svc.save(original, privilege: PrivilegeService())
+        let parsed = svc.parsePlist(at: original.plistURL, scope: .userAgent)
+
+        XCTAssertEqual(parsed?.label, original.label)
+        XCTAssertEqual(parsed?.program, original.program)
+        XCTAssertEqual(parsed?.programArguments, original.programArguments)
+        XCTAssertEqual(parsed?.calendarIntervals.count, 1)
+        XCTAssertEqual(parsed?.calendarIntervals.first?.hour, 9)
+        XCTAssertEqual(parsed?.calendarIntervals.first?.minute, 30)
+        XCTAssertEqual(parsed?.runAtLoad, true)
+        XCTAssertEqual(parsed?.standardOutPath, "/tmp/out.log")
+    }
+
+    func test_parsePlist_invalidFile_returnsNil() throws {
+        let url = tmpDir.appendingPathComponent("bad.plist")
+        try "not a plist".write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertNil(svc.parsePlist(at: url, scope: .userAgent))
+    }
+
+    func test_parsePlist_emptyDict_returnsNil() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict/></plist>
+        """
+        let url = tmpDir.appendingPathComponent("empty.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertNil(svc.parsePlist(at: url, scope: .userAgent))
+    }
+
+    func test_scanDirectory_separatesInvalidItems() throws {
+        let validPlist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.valid</string>
+            <key>Program</key><string>/bin/echo</string>
+        </dict></plist>
+        """
+        let emptyPlist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict/></plist>
+        """
+        let validURL = tmpDir.appendingPathComponent("com.test.valid.plist")
+        let emptyURL = tmpDir.appendingPathComponent("com.test.empty.plist")
+        try validPlist.write(to: validURL, atomically: true, encoding: .utf8)
+        try emptyPlist.write(to: emptyURL, atomically: true, encoding: .utf8)
+
+        let (items, invalid) = svc.scanDirectory(tmpDir, scope: .userAgent)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].label, "com.test.valid")
+        XCTAssertEqual(invalid.count, 1)
+        XCTAssertEqual(invalid[0].url.lastPathComponent, "com.test.empty.plist")
+        XCTAssertEqual(invalid[0].scope, .userAgent)
+    }
+
+    func test_delete_nonPrivileged_removesFile() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.delete</string>
+            <key>Program</key><string>/bin/echo</string>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.delete.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let item = svc.parsePlist(at: url, scope: .userAgent)!
+
+        let launchctl = LaunchctlService(shell: NoopShell())
+        try svc.delete(item, launchctl: launchctl, privilege: PrivilegeService())
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    func test_validateXml_valid() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.xml</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>EnvironmentVariables</key>
+            <dict><key>FOO</key><string>bar</string></dict>
+        </dict></plist>
+        """
+        let result = svc.validateXml(xml)
+        guard case .success(let dict) = result else {
+            return XCTFail("expected success")
+        }
+        XCTAssertEqual(dict["Label"] as? String, "com.test.xml")
+        XCTAssertNotNil(dict["EnvironmentVariables"])
+    }
+
+    func test_validateXml_missingLabel() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict><key>Program</key><string>/bin/echo</string></dict></plist>
+        """
+        guard case .failure(PlistValidationError.missingLabel) = svc.validateXml(xml) else {
+            return XCTFail("expected missingLabel")
+        }
+    }
+
+    func test_saveRawXml_preservesExtraKeys() throws {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.extra</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>EnvironmentVariables</key>
+            <dict><key>PORT</key><string>3000</string></dict>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.extra.plist")
+        try svc.saveRawXml(xml, to: url, scope: .userAgent, privilege: PrivilegeService())
+        let data = try Data(contentsOf: url)
+        let dict = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as! [String: Any]
+        XCTAssertNotNil(dict["EnvironmentVariables"])
+    }
+
+    func test_clonePlist_changesLabel() throws {
+        let source = tmpDir.appendingPathComponent("com.test.source.plist")
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.source</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>RunAtLoad</key><true/>
+        </dict></plist>
+        """
+        try xml.write(to: source, atomically: true, encoding: .utf8)
+        let dest = try svc.clonePlist(from: source, newLabel: "com.test.copy", targetScope: .userAgent, targetDirectory: tmpDir)
+        XCTAssertEqual(dest.lastPathComponent, "com.test.copy.plist")
+        let item = svc.parsePlist(at: dest, scope: .userAgent)
+        XCTAssertEqual(item?.label, "com.test.copy")
+    }
+
+    func test_parsePlist_multipleTriggers() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.multi</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>StartCalendarInterval</key>
+            <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+            <key>StartInterval</key><integer>300</integer>
+            <key>WatchPaths</key>
+            <array><string>/tmp/watch</string></array>
+            <key>RunAtLoad</key><true/>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.multi.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let item = svc.parsePlist(at: url, scope: .userAgent)
+        XCTAssertEqual(item?.calendarIntervals.count, 1)
+        XCTAssertEqual(item?.calendarIntervals.first?.hour, 8)
+        XCTAssertEqual(item?.startInterval, 300)
+        XCTAssertEqual(item?.watchPaths, ["/tmp/watch"])
+        XCTAssertEqual(item?.runAtLoad, true)
+    }
+
+    func test_parsePlist_calendarIntervalArray() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.calarray</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>StartCalendarInterval</key>
+            <array>
+                <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+                <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>30</integer></dict>
+            </array>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.calarray.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let item = svc.parsePlist(at: url, scope: .userAgent)
+        XCTAssertEqual(item?.calendarIntervals.count, 2)
+        XCTAssertEqual(item?.calendarIntervals[0].weekday, 1)
+        XCTAssertEqual(item?.calendarIntervals[0].hour, 8)
+        XCTAssertEqual(item?.calendarIntervals[1].weekday, 5)
+        XCTAssertEqual(item?.calendarIntervals[1].minute, 30)
+    }
+
+    func test_toDictionary_multipleCalendars_writesArray() {
+        let item = LaunchItem(
+            label: "com.test.calout",
+            plistURL: tmpDir.appendingPathComponent("com.test.calout.plist"),
+            scope: .userAgent,
+            program: "/bin/echo",
+            programArguments: [],
+            calendarIntervals: [
+                .init(weekday: 1, hour: 8, minute: 0),
+                .init(weekday: nil, hour: 12, minute: 15),
+            ],
+            startInterval: 60,
+            watchPaths: ["/tmp/a"],
+            runAtLoad: false,
+            keepAlive: false,
+            standardOutPath: nil,
+            standardErrorPath: nil,
+            workingDirectory: nil,
+            isLoaded: false,
+            pid: nil,
+            lastExitCode: nil
+        )
+        let dict = svc.toDictionary(item)
+        let cal = dict["StartCalendarInterval"] as? [[String: Int]]
+        XCTAssertEqual(cal?.count, 2)
+        XCTAssertEqual(dict["StartInterval"] as? Int, 60)
+        XCTAssertEqual(dict["WatchPaths"] as? [String], ["/tmp/a"])
+    }
+
+    func test_toDictionary_runAtLoadOnly_omitsStartKeys() {
+        let item = LaunchItem(
+            label: "com.test.runatload",
+            plistURL: tmpDir.appendingPathComponent("com.test.runatload.plist"),
+            scope: .userAgent,
+            program: "/bin/echo",
+            programArguments: [],
+            calendarIntervals: [],
+            startInterval: nil,
+            watchPaths: [],
+            runAtLoad: true,
+            keepAlive: false,
+            standardOutPath: nil,
+            standardErrorPath: nil,
+            workingDirectory: nil,
+            isLoaded: false,
+            pid: nil,
+            lastExitCode: nil
+        )
+        let dict = svc.toDictionary(item)
+        XCTAssertEqual(dict["RunAtLoad"] as? Bool, true)
+        XCTAssertNil(dict["StartCalendarInterval"])
+        XCTAssertNil(dict["StartInterval"])
+        XCTAssertNil(dict["WatchPaths"])
+    }
+
+    func test_toDictionary_naturalMonth_writesCalendarDay() {
+        let item = LaunchItem(
+            label: "com.test.month",
+            plistURL: tmpDir.appendingPathComponent("com.test.month.plist"),
+            scope: .userAgent,
+            program: "/bin/echo",
+            programArguments: [],
+            calendarIntervals: [
+                .init(weekday: nil, hour: 9, minute: 30, day: 15, month: nil)
+            ],
+            startInterval: nil,
+            watchPaths: [],
+            runAtLoad: false,
+            keepAlive: false,
+            standardOutPath: nil,
+            standardErrorPath: nil,
+            workingDirectory: nil,
+            isLoaded: false,
+            pid: nil,
+            lastExitCode: nil
+        )
+        let dict = svc.toDictionary(item)
+        let cal = dict["StartCalendarInterval"] as? [String: Int]
+        XCTAssertEqual(cal?["Day"], 15)
+        XCTAssertEqual(cal?["Hour"], 9)
+        XCTAssertEqual(cal?["Minute"], 30)
+        XCTAssertNil(cal?["Month"])
+        XCTAssertNil(dict["StartInterval"])
+    }
+
+    func test_parsePlist_naturalMonth_calendarDay() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.monthparse</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>StartCalendarInterval</key>
+            <dict>
+                <key>Day</key><integer>1</integer>
+                <key>Hour</key><integer>8</integer>
+                <key>Minute</key><integer>0</integer>
+            </dict>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.monthparse.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let item = svc.parsePlist(at: url, scope: .userAgent)
+        XCTAssertEqual(item?.calendarIntervals.count, 1)
+        XCTAssertEqual(item?.calendarIntervals.first?.day, 1)
+        XCTAssertEqual(item?.calendarIntervals.first?.hour, 8)
+        XCTAssertNil(item?.calendarIntervals.first?.month)
+        XCTAssertNil(item?.startInterval)
+    }
+
+    func test_formIncompatibility_allowsMultipleTriggerTypes() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.okmulti</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>StartInterval</key><integer>10</integer>
+            <key>WatchPaths</key><array><string>/tmp/x</string></array>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.okmulti.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let dict = try svc.readDictionary(from: url)
+        XCTAssertNil(svc.formIncompatibilityReason(for: dict))
+    }
+
+    func test_formIncompatibility_multipleWatchPathsCompatible() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.multipath</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>WatchPaths</key>
+            <array><string>/tmp/a</string><string>/tmp/b</string></array>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.multipath.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let dict = try svc.readDictionary(from: url)
+        XCTAssertNil(svc.formIncompatibilityReason(for: dict))
+    }
+
+    func test_saveRoot_noopWhenEqual() throws {
+        let url = tmpDir.appendingPathComponent("com.test.saveroot.plist")
+        let root: [String: Any] = [
+            "Label": "com.test.saveroot",
+            "Program": "/bin/echo",
+            "WatchPaths": ["/tmp/a", "/tmp/b"],
+            "QueueDirectories": ["/tmp/q"],
+        ]
+        try svc.saveRoot(root, to: url, scope: .userAgent, privilege: PrivilegeService(), openedRoot: nil)
+        let attrsBefore = try FileManager.default.attributesOfItem(atPath: url.path)
+        let mtimeBefore = attrsBefore[.modificationDate] as? Date
+        let sizeBefore = attrsBefore[.size] as? NSNumber
+
+        try svc.saveRoot(root, to: url, scope: .userAgent, privilege: PrivilegeService(), openedRoot: root)
+
+        let attrsAfter = try FileManager.default.attributesOfItem(atPath: url.path)
+        XCTAssertEqual(attrsAfter[.modificationDate] as? Date, mtimeBefore)
+        XCTAssertEqual(attrsAfter[.size] as? NSNumber, sizeBefore)
+    }
+
+    func test_saveRoot_writesWhenChanged() throws {
+        let url = tmpDir.appendingPathComponent("com.test.saveroot2.plist")
+        let opened: [String: Any] = [
+            "Label": "com.test.saveroot2",
+            "Program": "/bin/echo",
+            "QueueDirectories": ["/tmp/q"],
+        ]
+        try svc.saveRoot(opened, to: url, scope: .userAgent, privilege: PrivilegeService(), openedRoot: nil)
+
+        var changed = opened
+        changed["WatchPaths"] = ["/tmp/a", "/tmp/b"]
+        try svc.saveRoot(changed, to: url, scope: .userAgent, privilege: PrivilegeService(), openedRoot: opened)
+
+        let written = try svc.readDictionary(from: url)
+        XCTAssertEqual(written["WatchPaths"] as? [String], ["/tmp/a", "/tmp/b"])
+        XCTAssertEqual(written["QueueDirectories"] as? [String], ["/tmp/q"])
+        XCTAssertEqual(written["Label"] as? String, "com.test.saveroot2")
+    }
+
+    func test_triggerSummaryLines_order() {
+        let dict: [String: Any] = [
+            "StartCalendarInterval": ["Hour": 8, "Minute": 0] as [String: Any],
+            "StartInterval": 300,
+            "WatchPaths": ["/tmp/w"],
+            "RunAtLoad": true,
+        ]
+        let lines = LaunchItem.summaryLines(from: dict, runAtLoad: true)
+        XCTAssertEqual(lines.count, 4)
+        XCTAssertTrue(lines[0].contains("08:00"))
+        XCTAssertTrue(lines[0].hasPrefix(String(localized: "Daily")))
+        XCTAssertTrue(lines[1].contains("300"))
+        XCTAssertTrue(lines[2].contains("/tmp/w"))
+        XCTAssertEqual(lines[3], String(localized: "Run at login"))
+    }
+
+    func test_parsePlist_hourOnly_minuteNil_summaryCustom() throws {
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>com.test.houronly</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>StartCalendarInterval</key>
+            <dict><key>Hour</key><integer>9</integer></dict>
+        </dict></plist>
+        """
+        let url = tmpDir.appendingPathComponent("com.test.houronly.plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        let item = svc.parsePlist(at: url, scope: .userAgent)
+        XCTAssertEqual(item?.calendarIntervals.first?.hour, 9)
+        XCTAssertNil(item?.calendarIntervals.first?.minute)
+        let lines = item?.triggerSummaryLines ?? []
+        XCTAssertEqual(lines.count, 1)
+        XCTAssertTrue(lines[0].contains(String(localized: "Custom calendar")))
+        XCTAssertTrue(lines[0].contains("Hour=9"))
+        XCTAssertFalse(lines[0].contains("Minute"))
+    }
+
+    func test_triggerSummaryLines_weeklyMerged_neverWorkday() {
+        let dict: [String: Any] = [
+            "StartCalendarInterval": [
+                ["Weekday": 1, "Hour": 9, "Minute": 0],
+                ["Weekday": 2, "Hour": 9, "Minute": 0],
+                ["Weekday": 3, "Hour": 9, "Minute": 0],
+                ["Weekday": 4, "Hour": 9, "Minute": 0],
+                ["Weekday": 5, "Hour": 9, "Minute": 0],
+            ],
+        ]
+        let lines = LaunchItem.summaryLines(from: dict, runAtLoad: false)
+        XCTAssertEqual(lines.count, 1)
+        XCTAssertTrue(lines[0].contains("09:00"))
+        XCTAssertTrue(lines[0].contains("–"))
+        XCTAssertFalse(lines[0].contains("Weekdays"))
+    }
+
+    func test_triggerSummaryLines_passthroughHint() {
+        let dict: [String: Any] = [
+            "QueueDirectories": ["/tmp/q"],
+            "StartOnMount": true,
+        ]
+        let lines = LaunchItem.summaryLines(from: dict, runAtLoad: false)
+        XCTAssertEqual(lines.count, 1)
+        XCTAssertTrue(lines[0].contains("2"))
+        XCTAssertTrue(lines[0].contains("Other trigger conditions"))
+    }
+
+    /// Parse → project → applyTriggers (unmodified) → saveRoot should be a no-op on disk.
+    func test_roundTrip_unmodifiedTriggers_saveRootNoOp() throws {
+        let url = tmpDir.appendingPathComponent("com.test.roundtrip-triggers.plist")
+        let root: [String: Any] = [
+            "Label": "com.test.roundtrip-triggers",
+            "Program": "/bin/echo",
+            "StartCalendarInterval": [
+                ["Hour": 8] as [String: Any],
+                ["Day": 31, "Hour": 11, "Minute": 0] as [String: Any],
+                ["Month": 2, "Day": 29, "Hour": 10, "Minute": 0] as [String: Any],
+            ],
+            "WatchPaths": ["/tmp/a", "/tmp/b"],
+            "QueueDirectories": ["/tmp/q"],
+        ]
+        try svc.saveRoot(root, to: url, scope: .userAgent, privilege: PrivilegeService(), openedRoot: nil)
+
+        var session = try TriggerDocumentSession(url: url)
+        XCTAssertFalse(session.triggersDirty)
+        session.applyTriggerRulesToRoot()
+        XCTAssertFalse(session.rootLogicallyChanged)
+        XCTAssertEqual(session.root["QueueDirectories"] as? [String], ["/tmp/q"])
+
+        let attrsBefore = try FileManager.default.attributesOfItem(atPath: url.path)
+        let mtimeBefore = attrsBefore[.modificationDate] as? Date
+        try svc.saveRoot(
+            session.root,
+            to: url,
+            scope: .userAgent,
+            privilege: PrivilegeService(),
+            openedRoot: session.openedRoot
+        )
+        let attrsAfter = try FileManager.default.attributesOfItem(atPath: url.path)
+        XCTAssertEqual(attrsAfter[.modificationDate] as? Date, mtimeBefore)
+    }
+}
+
+// MARK: - AgentStore Pending Tests
+
+private final class KickstartCountingShell: ShellRunner, @unchecked Sendable {
+    private(set) var kickstartCount = 0
+    private let lock = NSLock()
+
+    func run(_ path: String, arguments: [String]) throws -> String {
+        if path == "/bin/launchctl" {
+            if arguments.first == "kickstart" {
+                lock.lock()
+                kickstartCount += 1
+                lock.unlock()
+                Thread.sleep(forTimeInterval: 0.15)
+            }
+            if arguments.first == "list" {
+                return "PID\tStatus\tLabel\n"
+            }
+        }
+        return ""
+    }
+}
+
+@MainActor
+final class AgentStorePendingTests: XCTestCase {
+    private func makeItem(label: String = "com.test.pending") -> LaunchItem {
+        LaunchItem(
+            label: label,
+            plistURL: URL(fileURLWithPath: "/tmp/\(label).plist"),
+            scope: .userAgent,
+            program: "/bin/echo",
+            programArguments: [],
+            calendarIntervals: [],
+            startInterval: nil,
+            watchPaths: [],
+            runAtLoad: true,
+            keepAlive: false,
+            standardOutPath: nil,
+            standardErrorPath: nil,
+            workingDirectory: nil,
+            isLoaded: true,
+            pid: nil,
+            lastExitCode: 0
+        )
+    }
+
+    func test_start_setsPendingImmediately() {
+        let shell = KickstartCountingShell()
+        let store = AgentStore(launchctlService: LaunchctlService(shell: shell))
+        let item = makeItem()
+
+        store.start(item)
+
+        XCTAssertEqual(store.pendingOperations[item.label], .starting)
+    }
+
+    func test_duplicateStartWhilePending_ignored() async throws {
+        let shell = KickstartCountingShell()
+        let store = AgentStore(launchctlService: LaunchctlService(shell: shell))
+        let item = makeItem()
+
+        store.start(item)
+        store.start(item)
+
+        try await Task.sleep(nanoseconds: 1_100_000_000)
+
+        XCTAssertEqual(shell.kickstartCount, 1)
+        XCTAssertNil(store.pendingOperations[item.label])
+    }
+
+    func test_startFailure_clearsPending() async throws {
+        struct FailingShell: ShellRunner {
+            func run(_ path: String, arguments: [String]) throws -> String {
+                if arguments.first == "kickstart" {
+                    throw ShellError.nonZeroExit(code: 1, output: "kickstart failed")
+                }
+                return "PID\tStatus\tLabel\n"
+            }
+        }
+        let store = AgentStore(launchctlService: LaunchctlService(shell: FailingShell()))
+        let item = makeItem()
+        var capturedError: String?
+
+        store.start(item) { capturedError = $0 }
+
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertNil(store.pendingOperations[item.label])
+        XCTAssertNotNil(capturedError)
+    }
+}
+
+// MARK: - AgentStore Runtime Status Polling Tests
+
+private final class ControllableListShell: ShellRunner, @unchecked Sendable {
+    enum Mode {
+        case succeed(output: String)
+        case fail
+        case delayThen(output: String, seconds: TimeInterval)
+    }
+
+    private let lock = NSLock()
+    private var mode: Mode
+    private(set) var listCount = 0
+
+    init(mode: Mode) {
+        self.mode = mode
+    }
+
+    func setMode(_ mode: Mode) {
+        lock.lock()
+        self.mode = mode
+        lock.unlock()
+    }
+
+    func run(_ path: String, arguments: [String]) throws -> String {
+        guard path == "/bin/launchctl", arguments.first == "list" else { return "" }
+        lock.lock()
+        listCount += 1
+        let mode = self.mode
+        lock.unlock()
+
+        switch mode {
+        case .succeed(let output):
+            return output
+        case .fail:
+            throw ShellError.nonZeroExit(code: 1, output: "list failed")
+        case .delayThen(let output, let seconds):
+            Thread.sleep(forTimeInterval: seconds)
+            return output
+        }
+    }
+}
+
+@MainActor
+final class AgentStoreRuntimeStatusTests: XCTestCase {
+    private func makeItem(
+        label: String = "com.test.runtime",
+        isLoaded: Bool = true,
+        pid: Int? = 4242,
+        lastExitCode: Int? = 0
+    ) -> LaunchItem {
+        LaunchItem(
+            label: label,
+            plistURL: URL(fileURLWithPath: "/tmp/\(label).plist"),
+            scope: .userAgent,
+            program: "/bin/echo",
+            programArguments: [],
+            calendarIntervals: [],
+            startInterval: nil,
+            watchPaths: [],
+            runAtLoad: true,
+            keepAlive: false,
+            standardOutPath: nil,
+            standardErrorPath: nil,
+            workingDirectory: nil,
+            isLoaded: isLoaded,
+            pid: pid,
+            lastExitCode: lastExitCode
+        )
+    }
+
+    func test_startStatusPolling_twice_isIdempotent() async throws {
+        let shell = ControllableListShell(mode: .succeed(output: "PID\tStatus\tLabel\n"))
+        let store = AgentStore(launchctlService: LaunchctlService(shell: shell))
+        store.items = [makeItem()]
+
+        store.startStatusPolling()
+        store.startStatusPolling()
+
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(shell.listCount, 1)
+
+        store.stopStatusPolling()
+    }
+
+    func test_refreshRuntimeStatus_failure_preservesState() async throws {
+        let shell = ControllableListShell(mode: .fail)
+        let store = AgentStore(launchctlService: LaunchctlService(shell: shell))
+        let item = makeItem(pid: 99, lastExitCode: 7)
+        store.items = [item]
+
+        await store.refreshRuntimeStatus()
+
+        XCTAssertEqual(store.items.first?.pid, 99)
+        XCTAssertEqual(store.items.first?.lastExitCode, 7)
+        XCTAssertEqual(store.items.first?.isLoaded, true)
+    }
+
+    func test_refreshRuntimeStatus_successMissingLabel_marksUnloaded() async throws {
+        let shell = ControllableListShell(mode: .succeed(output: "PID\tStatus\tLabel\n"))
+        let store = AgentStore(launchctlService: LaunchctlService(shell: shell))
+        store.items = [makeItem(pid: 99, lastExitCode: 0)]
+
+        await store.refreshRuntimeStatus()
+
+        XCTAssertNil(store.items.first?.pid)
+        XCTAssertNil(store.items.first?.lastExitCode)
+        XCTAssertEqual(store.items.first?.isLoaded, false)
+    }
+
+    func test_refreshRuntimeStatus_staleResultDiscardedAfterStopPolling() async throws {
+        let emptyList = "PID\tStatus\tLabel\n"
+        let shell = ControllableListShell(mode: .delayThen(output: emptyList, seconds: 0.25))
+        let store = AgentStore(launchctlService: LaunchctlService(shell: shell))
+        store.items = [makeItem(pid: 99, lastExitCode: 0)]
+
+        let refreshTask = Task { await store.refreshRuntimeStatus() }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        store.stopStatusPolling()
+        await refreshTask.value
+
+        XCTAssertEqual(store.items.first?.pid, 99)
+        XCTAssertEqual(store.items.first?.isLoaded, true)
+    }
+
+    func test_refreshRuntimeStatus_updatesPidWhenPresent() async throws {
+        let output = "PID\tStatus\tLabel\n123\t0\tcom.test.runtime\n"
+        let shell = ControllableListShell(mode: .succeed(output: output))
+        let store = AgentStore(launchctlService: LaunchctlService(shell: shell))
+        store.items = [makeItem(isLoaded: false, pid: nil, lastExitCode: nil)]
+
+        await store.refreshRuntimeStatus()
+
+        XCTAssertEqual(store.items.first?.pid, 123)
+        XCTAssertEqual(store.items.first?.lastExitCode, 0)
+        XCTAssertEqual(store.items.first?.isLoaded, true)
+    }
+}
+
+// MARK: - AgentStore Plist Tests
+
+@MainActor
+final class AgentStorePlistTests: XCTestCase {
+    var tmpDir: URL!
+    var plistService: PlistService!
+    var store: AgentStore!
+
+    override func setUp() {
+        tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try! FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        plistService = PlistService(scopeDirectoryOverrides: [.userAgent: tmpDir])
+        store = AgentStore(
+            plistService: plistService,
+            launchctlService: LaunchctlService(shell: NoopShell())
+        )
+    }
+
+    override func tearDown() {
+        try? FileManager.default.removeItem(at: tmpDir)
+    }
+
+    private func samplePlistXML(label: String = "com.test.import") -> String {
+        """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Label</key><string>\(label)</string>
+            <key>Program</key><string>/bin/echo</string>
+            <key>RunAtLoad</key><true/>
+        </dict></plist>
+        """
+    }
+
+    func test_importPlist_createsItemInStore() throws {
+        let source = tmpDir.appendingPathComponent("source.plist")
+        try samplePlistXML().write(to: source, atomically: true, encoding: .utf8)
+
+        let item = try store.importPlist(from: source, scope: .userAgent, overwrite: false)
+
+        XCTAssertEqual(item.label, "com.test.import")
+        XCTAssertEqual(item.scope, .userAgent)
+        XCTAssertTrue(store.items.contains(where: { $0.label == "com.test.import" }))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: item.plistURL.path))
+    }
+
+    func test_importPlist_existingWithoutOverwrite_throws() throws {
+        let source = tmpDir.appendingPathComponent("source.plist")
+        try samplePlistXML().write(to: source, atomically: true, encoding: .utf8)
+        _ = try store.importPlist(from: source, scope: .userAgent, overwrite: false)
+
+        do {
+            _ = try store.importPlist(from: source, scope: .userAgent, overwrite: false)
+            XCTFail("expected duplicate import error")
+        } catch PlistValidationError.invalidFormat(let message) {
+            XCTAssertEqual(message, String(localized: "File already exists"))
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
+    func test_cloneItem_createsCopyWithNewLabel() throws {
+        let source = tmpDir.appendingPathComponent("com.test.source.plist")
+        try samplePlistXML(label: "com.test.source").write(to: source, atomically: true, encoding: .utf8)
+        store.refresh()
+        let original = try XCTUnwrap(store.items.first(where: { $0.label == "com.test.source" }))
+
+        try store.cloneItem(original, newLabel: "com.test.cloned", scope: .userAgent)
+
+        XCTAssertTrue(store.items.contains(where: { $0.label == "com.test.cloned" }))
+        let cloned = try XCTUnwrap(store.items.first(where: { $0.label == "com.test.cloned" }))
+        XCTAssertEqual(cloned.program, original.program)
+        XCTAssertEqual(cloned.runAtLoad, original.runAtLoad)
+    }
+
+    func test_cloneItem_existingLabel_throws() throws {
+        let source = tmpDir.appendingPathComponent("com.test.source.plist")
+        try samplePlistXML(label: "com.test.source").write(to: source, atomically: true, encoding: .utf8)
+        store.refresh()
+        let original = try XCTUnwrap(store.items.first(where: { $0.label == "com.test.source" }))
+
+        try store.cloneItem(original, newLabel: "com.test.copy", scope: .userAgent)
+
+        do {
+            try store.cloneItem(original, newLabel: "com.test.copy", scope: .userAgent)
+            XCTFail("expected duplicate label error")
+        } catch PlistValidationError.invalidFormat(let message) {
+            XCTAssertEqual(message, String(localized: "Label already exists"))
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
+    func test_saveRawXml_refreshesStore() throws {
+        let url = tmpDir.appendingPathComponent("com.test.raw.plist")
+        try store.saveRawXml(samplePlistXML(label: "com.test.raw"), to: url, scope: .userAgent)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        XCTAssertTrue(store.items.contains(where: { $0.label == "com.test.raw" }))
+    }
+}
+
+// MARK: - CommandLineParser Tests
+
+final class CommandLineParserTests: XCTestCase {
+    func test_simpleCommand() {
+        XCTAssertEqual(CommandLineParser.parse("node server.js"), ["node", "server.js"])
+    }
+
+    func test_quotedPath() {
+        XCTAssertEqual(
+            CommandLineParser.parse(#"/usr/bin/node "/Users/darwin/my app/server.js""#),
+            ["/usr/bin/node", "/Users/darwin/my app/server.js"]
+        )
+    }
+
+    func test_npmRunDev() {
+        let args = CommandLineParser.parse("npm run dev")
+        XCTAssertEqual(args, ["npm", "run", "dev"])
+    }
+
+    func test_empty_returnsEmpty() {
+        XCTAssertTrue(CommandLineParser.parse("").isEmpty)
+    }
+}
+
+// MARK: - LaunchAgentDraft Tests
+
+final class LaunchAgentDraftTests: XCTestCase {
+    func test_launchAgentDraft_fromService() {
+        let service = makeService(
+            port: 3000,
+            executable: "node",
+            displayName: "Next Dev",
+            command: "node next dev",
+            workingDirectory: "/proj"
+        )
+        let draft = LaunchAgentDraft.from(service: service)
+        XCTAssertEqual(draft?.program, "node")
+        XCTAssertEqual(draft?.programArguments, ["next", "dev"])
+        XCTAssertEqual(draft?.workingDirectory, "/proj")
+        XCTAssertEqual(draft?.label, "dev.3000.next-dev")
+        XCTAssertTrue(draft?.runAtLoad == true)
+        XCTAssertFalse(draft?.keepAlive == true)
+    }
+
+    private func makeService(
+        port: Int,
+        executable: String,
+        displayName: String,
+        command: String,
+        workingDirectory: String?
+    ) -> Service {
+        let key = ServiceNameStore.identityKey(port: port, executable: executable)
+        return Service(
+            identityKey: key,
+            autoDisplayName: displayName,
+            displayName: displayName,
+            identityKind: .realService,
+            runtimeGroup: .instance,
+            subtitle: nil,
+            category: .other,
+            health: .healthy,
+            port: port,
+            host: "localhost",
+            pid: 1,
+            executable: executable,
+            command: command,
+            workingDirectory: workingDirectory,
+            processDirectory: nil,
+            url: nil,
+            dockerInfo: nil,
+            stopMethod: .process(pid: 1)
+        )
+    }
+}
+
+// MARK: - FilePathNormalizer Tests
+
+final class FilePathNormalizerTests: XCTestCase {
+    func test_decodeLsofOctalEscapes_decodesUTF8Path() {
+        // Café in octal: Caf\303\251
+        let encoded = "/Applications/Caf\\303\\251.app"
+        XCTAssertEqual(
+            FilePathNormalizer.decodeLsofOctalEscapes(encoded),
+            "/Applications/Café.app"
+        )
+    }
+
+    func test_repairUTF8Mojibake_fixesLatin1Misread() {
+        let mojibake = "å¯å¨å¨"
+        XCTAssertEqual(FilePathNormalizer.repairUTF8Mojibake(mojibake), "Bootayar")
+    }
+
+    func test_normalize_leavesAsciiPathsUntouched() {
+        XCTAssertEqual(
+            FilePathNormalizer.normalize("/Users/darwin/project"),
+            "/Users/darwin/project"
+        )
+    }
+
+    func test_normalize_preservesChinesePath() {
+        XCTAssertEqual(
+            FilePathNormalizer.normalize("/Applications/Café.app"),
+            "/Applications/Café.app"
+        )
+    }
+
+    func test_display_preservesChinesePath() {
+        XCTAssertEqual(
+            FilePathNormalizer.display("/Applications/Café.app"),
+            "/Applications/Café.app"
+        )
+    }
+}
+
+// MARK: - ProcessDiscoveryService Tests
+
+final class ProcessDiscoveryServiceTests: XCTestCase {
+    let svc = ProcessDiscoveryService(shell: NoopShell())
+
+    func test_parseLsofOutput_extractsPidPortExecutable() {
+        let output = """
+        COMMAND   PID USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        node    12345 darwin   21u  IPv4 0xdeadbeef      0t0  TCP *:3000 (LISTEN)
+        Python  67890 darwin    3u  IPv4 0xbeefdead      0t0  TCP 127.0.0.1:8000 (LISTEN)
+        """
+        let rows = svc.parseLsofOutput(output)
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertEqual(rows[0].pid, 12345)
+        XCTAssertEqual(rows[0].port, 3000)
+        XCTAssertEqual(rows[0].executable, "node")
+        XCTAssertEqual(rows[1].pid, 67890)
+        XCTAssertEqual(rows[1].port, 8000)
+        XCTAssertEqual(rows[1].executable, "Python")
+    }
+
+    func test_parseLsofOutput_skipsHeaderAndNonListen() {
+        let output = """
+        COMMAND   PID USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        """
+        XCTAssertTrue(svc.parseLsofOutput(output).isEmpty)
+    }
+
+    func test_extractPort_parsesIPv6() {
+        XCTAssertEqual(ProcessDiscoveryService.extractPort(from: "[::1]:5432"), 5432)
+        XCTAssertEqual(ProcessDiscoveryService.extractPort(from: "*:6379"), 6379)
+        XCTAssertNil(ProcessDiscoveryService.extractPort(from: "*:bonjour"))
+    }
+
+    func test_executableName_fromFullPsCommand() {
+        XCTAssertEqual(
+            ProcessDiscoveryService.executableName(from: "/opt/homebrew/bin/cloudflared tunnel run"),
+            "cloudflared"
+        )
+        XCTAssertEqual(
+            ProcessDiscoveryService.executableName(from: "/System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter"),
+            "ControlCenter"
+        )
+    }
+}
+
+private struct FakeDiscoveryShell: ShellRunner, @unchecked Sendable {
+    let lsofOutput: String
+    var psResponses: [Int32: String] = [:]
+    var cwdResponses: [Int32: String] = [:]
+
+    func run(_ path: String, arguments: [String]) throws -> String {
+        if path == "/usr/bin/env", arguments.count >= 3 {
+            let realPath = arguments[2]
+            let realArgs = Array(arguments.dropFirst(3))
+            return try run(realPath, arguments: realArgs)
+        }
+        if path == "/usr/sbin/lsof" && arguments.contains("-iTCP") {
+            return lsofOutput
+        }
+        if path == "/bin/ps" {
+            if let pIndex = arguments.firstIndex(of: "-p"), pIndex + 1 < arguments.count,
+               let pid = Int32(arguments[pIndex + 1]) {
+                return psResponses[pid] ?? ""
+            }
+        }
+        if path == "/usr/sbin/lsof", arguments.contains("-d"), arguments.contains("cwd") {
+            if let pIndex = arguments.firstIndex(of: "-p"), pIndex + 1 < arguments.count,
+               let pid = Int32(arguments[pIndex + 1]) {
+                if let cwd = cwdResponses[pid] { return "n\(cwd)\n" }
+            }
+        }
+        return ""
+    }
+}
+
+extension ProcessDiscoveryServiceTests {
+    func test_buildProcesses_enrichesCommandAndCwd() throws {
+        let fakePid: Int32 = 42_424
+        let lsof = """
+        COMMAND   PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+        node    \(fakePid) darwin   21u  IPv4 0x0      0t0  TCP *:3000 (LISTEN)
+        """
+        let shell = FakeDiscoveryShell(
+            lsofOutput: lsof,
+            psResponses: [fakePid: "node /usr/local/bin/next dev"],
+            cwdResponses: [fakePid: "/Users/darwin/blog/frontend"]
+        )
+        let svc = ProcessDiscoveryService(
+            shell: shell,
+            isAlive: { $0 == fakePid }
+        )
+        let processes = try svc.scan()
+        XCTAssertEqual(processes.count, 1)
+        XCTAssertEqual(processes[0].command, "node /usr/local/bin/next dev")
+        XCTAssertEqual(processes[0].executable, "node")
+        XCTAssertEqual(processes[0].workingDirectory, "/Users/darwin/blog/frontend")
+    }
+
+    func test_resolveCommand_usesPsFallbackForUnknownPid() {
+        let shell = FakeDiscoveryShell(
+            lsofOutput: "",
+            psResponses: [99_999: "/Applications/Bootayar.app/Contents/MacOS/Bootayar --serve"]
+        )
+        let svc = ProcessDiscoveryService(shell: shell)
+        let command = svc.resolveCommand(pid: 99_999, shell: shell, fallbackExecutable: "Bootayar")
+        XCTAssertEqual(command, "/Applications/Bootayar.app/Contents/MacOS/Bootayar --serve")
+    }
+
+    func test_healthCheck_aliveProcess() {
+        XCTAssertTrue(ProcessDiscoveryService.isProcessAlive(pid: getpid()))
+        XCTAssertFalse(ProcessDiscoveryService.isProcessAlive(pid: 999_999))
+    }
+
+    func test_parseLsofOutput_allowsFewerColumnsWhenNameHasSpaces() {
+        let output = """
+        COMMAND   PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+        Google    123 darwin   51u  IPv4 0x0      0t0  TCP 127.0.0.1:9222 (LISTEN)
+        """
+        let rows = svc.parseLsofOutput(output)
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].port, 9222)
+    }
+}
+
+// MARK: - Service Resolver Tests
+
+final class ServiceResolverTests: XCTestCase {
+    func test_commandLineResolver_nextJs() {
+        let hit = CommandLineResolver().resolve(command: "node /path/next dev --port 3000")
+        XCTAssertEqual(hit?.displayName, "Next.js")
+        XCTAssertEqual(hit?.identityKind, .realService)
+    }
+
+    func test_commandLineResolver_uvicorn_notMatched() {
+        let hit = CommandLineResolver().resolve(command: "uvicorn app.main:app --reload")
+        XCTAssertNil(hit)
+    }
+
+    func test_executableResolver_redis() {
+        let hit = ExecutableResolver().resolve(executable: "redis-server")
+        XCTAssertEqual(hit?.displayName, "Redis")
+        XCTAssertEqual(hit?.category, .cache)
+    }
+
+    func test_executableResolver_postgres() {
+        let hit = ExecutableResolver().resolve(executable: "postgres")
+        XCTAssertEqual(hit?.displayName, "PostgreSQL")
+    }
+
+    func test_executableResolver_node_notMatched() {
+        XCTAssertNil(ExecutableResolver().resolve(executable: "node"))
+    }
+
+    func test_hostMechanism_dockerProxy() {
+        let process = ListeningProcess(
+            pid: 1, port: 6379, protocolName: "tcp",
+            command: "docker-proxy -proto tcp -host-ip 0.0.0.0 -host-port 6379",
+            executable: "docker-proxy", workingDirectory: nil
+        )
+        let hit = HostMechanismResolver().resolve(process: process)
+        XCTAssertEqual(hit?.displayName, String(localized: "Docker Port Forward"))
+        XCTAssertEqual(hit?.identityKind, .hostMechanism)
+    }
+
+    func test_hostMechanism_sshForward() {
+        let process = ListeningProcess(
+            pid: 1, port: 5432, protocolName: "tcp",
+            command: "ssh -L 5432:127.0.0.1:5432 user@remote",
+            executable: "ssh", workingDirectory: nil
+        )
+        let hit = HostMechanismResolver().resolve(process: process)
+        XCTAssertEqual(hit?.displayName, String(localized: "SSH Port Forward"))
+    }
+
+    func test_hostMechanism_colima() {
+        let process = ListeningProcess(
+            pid: 1, port: 8080, protocolName: "tcp",
+            command: "/Users/darwin/.colima/default/docker.sock",
+            executable: "colima", workingDirectory: nil
+        )
+        let hit = HostMechanismResolver().resolve(process: process)
+        XCTAssertEqual(hit?.displayName, "Colima")
+    }
+
+    func test_hostMechanism_launchd() {
+        let process = ListeningProcess(
+            pid: 1, port: 8080, protocolName: "tcp",
+            command: "/sbin/launchd",
+            executable: "launchd", workingDirectory: nil
+        )
+        let hit = HostMechanismResolver().resolve(process: process)
+        XCTAssertEqual(hit?.displayName, String(localized: "System Service (launchd)"))
+    }
+
+    func test_projectResolver_packageJson() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try #"{"name":"blog-frontend"}"#.write(to: dir.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+        let name = ProjectResolver().resolve(workingDirectory: dir.path)
+        XCTAssertEqual(name, "blog-frontend")
+    }
+
+    func test_projectContext_findsRootFromCommandPath() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try #"{"name":"my-app"}"#.write(to: dir.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+        let bin = dir.appendingPathComponent("node_modules/.bin/next")
+        try FileManager.default.createDirectory(at: bin.deletingLastPathComponent(), withIntermediateDirectories: true)
+
+        let process = ListeningProcess(
+            pid: 1, port: 3000, protocolName: "tcp",
+            command: "\(bin.path) dev",
+            executable: "node",
+            workingDirectory: FileManager.default.homeDirectoryForCurrentUser.path
+        )
+        let context = ProjectContextResolver().resolve(process: process)
+        XCTAssertEqual(context.projectDirectory, dir.path)
+        XCTAssertEqual(context.projectName, "my-app")
+    }
+}
+
+// MARK: - ServiceClassifier Tests
+
+final class ServiceClassifierTests: XCTestCase {
+    private func isolatedNameStore() -> ServiceNameStore {
+        let suite = "ServiceNameStoreTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        return ServiceNameStore(defaults: defaults)
+    }
+
+    func test_classify_nextJs() {
+        let p = ListeningProcess(
+            pid: getpid(), port: 3000, protocolName: "tcp",
+            command: "node next dev", executable: "node",
+            workingDirectory: nil
+        )
+        let svc = ServiceClassifier().classify(
+            p, dockerIndex: DockerContainerIndex(containers: []), nameStore: isolatedNameStore()
+        )
+        XCTAssertEqual(svc.displayName, "Next.js")
+        XCTAssertEqual(svc.runtimeGroup, .instance)
+        XCTAssertEqual(svc.identityKind, .realService)
+        XCTAssertEqual(svc.url?.port, 3000)
+        XCTAssertEqual(svc.health, .healthy)
+    }
+
+    func test_classify_dockerProxy_blocksKillWithoutContainer() {
+        let p = ListeningProcess(
+            pid: 1, port: 6379, protocolName: "tcp",
+            command: "docker-proxy -proto tcp -host-port 6379",
+            executable: "docker-proxy", workingDirectory: nil
+        )
+        let svc = ServiceClassifier().classify(
+            p, dockerIndex: DockerContainerIndex(containers: []), nameStore: isolatedNameStore()
+        )
+        XCTAssertEqual(svc.autoDisplayName, String(localized: "Docker Port Forward"))
+        XCTAssertEqual(svc.identityKind, .hostMechanism)
+        XCTAssertEqual(svc.runtimeGroup, .docker)
+        XCTAssertFalse(svc.killAllowed)
+        if case .blocked = svc.stopMethod { } else {
+            XCTFail("expected blocked stop method")
+        }
+    }
+
+    func test_classify_dockerProxy_resolvesRedisContainer() {
+        let container = DockerContainerInfo(
+            id: "abc123def456",
+            name: "myproject-redis-1",
+            image: "redis:7-alpine",
+            composeProject: "myproject",
+            composeService: "redis",
+            publishedHostPorts: [6379]
+        )
+        let index = DockerContainerIndex(containers: [container])
+        let p = ListeningProcess(
+            pid: 1, port: 6379, protocolName: "tcp",
+            command: "docker-proxy -proto tcp -host-port 6379",
+            executable: "docker-proxy", workingDirectory: nil
+        )
+        let svc = ServiceClassifier().classify(
+            p, dockerIndex: index, nameStore: isolatedNameStore()
+        )
+        XCTAssertEqual(svc.displayName, "Redis")
+        XCTAssertEqual(svc.runtimeGroup, .docker)
+        XCTAssertEqual(svc.subtitle, "myproject · redis")
+        XCTAssertTrue(svc.usesDockerStop)
+        XCTAssertEqual(svc.dockerInfo?.composeService, "redis")
+        if case .dockerContainer(let ref, _) = svc.stopMethod {
+            XCTAssertEqual(ref, "myproject-redis-1")
+        } else {
+            XCTFail("expected docker stop")
+        }
+    }
+
+    func test_classify_redis_direct() {
+        let p = ListeningProcess(
+            pid: 1, port: 6379, protocolName: "tcp",
+            command: "redis-server", executable: "redis-server", workingDirectory: nil
+        )
+        let svc = ServiceClassifier().classify(
+            p, dockerIndex: DockerContainerIndex(containers: []), nameStore: isolatedNameStore()
+        )
+        XCTAssertEqual(svc.displayName, "Redis")
+        XCTAssertEqual(svc.identityKind, .realService)
+    }
+
+    func test_classify_unidentified_usesExecutable() {
+        let p = ListeningProcess(
+            pid: 1, port: 8080, protocolName: "tcp",
+            command: "cloudflared tunnel run", executable: "cloudflared", workingDirectory: nil
+        )
+        let svc = ServiceClassifier().classify(
+            p, dockerIndex: DockerContainerIndex(containers: []), nameStore: isolatedNameStore()
+        )
+        XCTAssertEqual(svc.displayName, "cloudflared")
+        XCTAssertEqual(svc.identityKind, .unidentified)
+    }
+
+    func test_classify_customNameOverrides() {
+        let store = isolatedNameStore()
+        let key = ServiceNameStore.identityKey(port: 8080, executable: "cloudflared")
+        store.setCustomName("My Tunnel", for: key)
+        let p = ListeningProcess(
+            pid: 1, port: 8080, protocolName: "tcp",
+            command: "cloudflared tunnel run", executable: "cloudflared", workingDirectory: nil
+        )
+        let svc = ServiceClassifier().classify(p, dockerIndex: DockerContainerIndex(containers: []), nameStore: store)
+        XCTAssertEqual(svc.displayName, "My Tunnel")
+        XCTAssertEqual(svc.autoDisplayName, "cloudflared")
+    }
+}
+
+// MARK: - Docker Tests
+
+final class DockerContainerIndexTests: XCTestCase {
+    func test_resolveExecutable_usesKnownPathsOnly() {
+        guard let path = DockerCLI.resolveExecutable() else { return }
+        XCTAssertTrue(DockerCLI.allCandidatePaths().contains(path))
+    }
+
+    func test_augmentedPATH_includesCommonInstallDirs() {
+        let path = DockerCLI.augmentedPATH(existing: "/usr/bin:/bin")
+        XCTAssertTrue(path.contains("/opt/homebrew/bin"))
+        XCTAssertTrue(path.contains("/usr/local/bin"))
+    }
+
+    func test_optionalInit_succeedsWhenDockerAvailable() throws {
+        if DockerCLI.resolveExecutable() == nil && DockerCLI(optional: DefaultShellRunner()) == nil {
+            throw XCTSkip("docker not available")
+        }
+        XCTAssertNotNil(DockerCLI(optional: DefaultShellRunner()))
+    }
+
+    func test_parseHostPorts() {
+        let ports = DockerContainerIndex.parseHostPorts(
+            from: "0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp, 127.0.0.1:3000->3000/tcp"
+        )
+        XCTAssertEqual(Set(ports), Set([6379, 3000]))
+    }
+
+    func test_parseListingLine() {
+        let line = "abc123\tmy-redis\tredis:7\t0.0.0.0:6379->6379/tcp\tredis\tmyproject"
+        let container = DockerContainerIndex.parseLine(line)
+        XCTAssertEqual(container?.name, "my-redis")
+        XCTAssertEqual(container?.composeService, "redis")
+        XCTAssertEqual(container?.publishedHostPorts, [6379])
+    }
+
+    func test_containerLookupByPort() {
+        let container = DockerContainerInfo(
+            id: "id1", name: "web-1", image: "nginx:latest",
+            composeProject: "app", composeService: "web",
+            publishedHostPorts: [8080]
+        )
+        let index = DockerContainerIndex(containers: [container])
+        XCTAssertEqual(index.container(forHostPort: 8080)?.name, "web-1")
+        XCTAssertNil(index.container(forHostPort: 9090))
+    }
+}
+
+final class DockerManagedDetectorTests: XCTestCase {
+    func test_dockerProxy() {
+        let p = ListeningProcess(
+            pid: 1, port: 1, protocolName: "tcp",
+            command: "docker-proxy", executable: "docker-proxy", workingDirectory: nil
+        )
+        XCTAssertTrue(DockerManagedDetector.isDockerManaged(p))
+    }
+
+    func test_colimaPath() {
+        let p = ListeningProcess(
+            pid: 1, port: 1, protocolName: "tcp",
+            command: "/Users/darwin/.colima/docker.sock",
+            executable: "colima", workingDirectory: "/Users/darwin/.colima/default"
+        )
+        XCTAssertTrue(DockerManagedDetector.isDockerManaged(p))
+    }
+}
+
+// MARK: - DevServiceFilter Tests
+
+final class DevServiceFilterTests: XCTestCase {
+    func test_devPort_passes() {
+        let s = makeService(port: 5432, executable: "postgres", displayName: "PostgreSQL")
+        XCTAssertTrue(DevServiceFilter().isDevService(s))
+    }
+
+    func test_unknownSystemPort_filtered() {
+        let s = makeService(port: 5353, executable: "mDNSResponder", displayName: "mDNSResponder")
+        XCTAssertFalse(DevServiceFilter().isDevService(s))
+    }
+
+    func test_controlCenterOn5000_filtered() {
+        let s = makeService(port: 5000, executable: "ControlCenter", displayName: "AirPlay Receiver")
+        XCTAssertFalse(DevServiceFilter().isDevService(s))
+    }
+
+    private func makeService(port: Int, executable: String, displayName: String) -> Service {
+        let key = ServiceNameStore.identityKey(port: port, executable: executable)
+        return Service(
+            identityKey: key,
+            autoDisplayName: displayName,
+            displayName: displayName,
+            identityKind: .realService,
+            runtimeGroup: .instance,
+            subtitle: nil, category: .other,
+            health: .healthy, port: port, host: "localhost", pid: 1,
+            executable: executable, command: executable,
+            workingDirectory: nil, processDirectory: nil, url: nil,
+            dockerInfo: nil, stopMethod: .process(pid: 1)
+        )
+    }
+}
+
+// MARK: - CrontabParser Tests
+
+final class CrontabParserTests: XCTestCase {
+    func test_parseEnabledJob() {
+        let lines = CrontabParser.parse("0 8 * * * /usr/bin/date\n")
+        XCTAssertEqual(lines.count, 1)
+        guard case .job(let job) = lines[0] else {
+            return XCTFail("Expected job line")
+        }
+        XCTAssertEqual(job.minute, "0")
+        XCTAssertEqual(job.hour, "8")
+        XCTAssertEqual(job.command, "/usr/bin/date")
+        XCTAssertTrue(job.isEnabled)
+    }
+
+    func test_parseDisabledJob() {
+        let lines = CrontabParser.parse("# 15 9 * * 1 /usr/bin/backup.sh\n")
+        guard case .job(let job) = lines[0] else {
+            return XCTFail("Expected job line")
+        }
+        XCTAssertEqual(job.minute, "15")
+        XCTAssertEqual(job.hour, "9")
+        XCTAssertEqual(job.weekday, "1")
+        XCTAssertEqual(job.command, "/usr/bin/backup.sh")
+        XCTAssertFalse(job.isEnabled)
+    }
+
+    func test_parseEnvironmentAndComment() {
+        let text = """
+        # backup jobs
+        MAILTO=ops@example.com
+        PATH=/usr/bin:/bin
+
+        0 2 * * * /usr/local/bin/backup.sh
+        """
+        let lines = CrontabParser.parse(text)
+        XCTAssertEqual(lines.count, 5)
+        guard case .comment = lines[0] else { return XCTFail("Expected comment") }
+        guard case .environment(_, let key, let value) = lines[1] else { return XCTFail("Expected env") }
+        XCTAssertEqual(key, "MAILTO")
+        XCTAssertEqual(value, "ops@example.com")
+        guard case .blank = lines[3] else { return XCTFail("Expected blank line") }
+        guard case .job(let job) = lines[4] else { return XCTFail("Expected job") }
+        XCTAssertEqual(job.command, "/usr/local/bin/backup.sh")
+    }
+
+    func test_serializeRoundTrip() {
+        let original = """
+        MAILTO=me@example.com
+        0 8 * * * /usr/bin/date
+        # 30 9 * * * /usr/bin/disabled
+        """
+        let lines = CrontabParser.parse(original)
+        let serialized = CrontabParser.serialize(lines)
+        let reparsed = CrontabParser.parse(serialized)
+        XCTAssertEqual(CrontabParser.jobs(from: lines, scope: .user).count, 2)
+        XCTAssertEqual(CrontabParser.jobs(from: reparsed, scope: .user).map(\.command), ["/usr/bin/date", "/usr/bin/disabled"])
+        XCTAssertEqual(CrontabParser.jobs(from: reparsed, scope: .user).map(\.isEnabled), [true, false])
+    }
+
+    func test_parseCommandWithSpacesInQuotes() {
+        let lines = CrontabParser.parse("0 9 * * * /bin/echo \"hello world\"\n")
+        guard case .job(let job) = lines[0] else {
+            return XCTFail("Expected job line")
+        }
+        XCTAssertEqual(job.command, "/bin/echo \"hello world\"")
+    }
+
+    func test_parseSystemJob() {
+        let lines = CrontabParser.parse("*/5 * * * * root /usr/libexec/atrun\n", format: .system)
+        guard case .job(let job) = lines[0] else {
+            return XCTFail("Expected job line")
+        }
+        XCTAssertEqual(job.minute, "*/5")
+        XCTAssertEqual(job.runAsUser, "root")
+        XCTAssertEqual(job.command, "/usr/libexec/atrun")
+        XCTAssertTrue(job.isEnabled)
+    }
+
+    func test_parseDisabledSystemJob() {
+        let lines = CrontabParser.parse("# 0 2 * * * daemon /usr/sbin/periodic daily\n", format: .system)
+        guard case .job(let job) = lines[0] else {
+            return XCTFail("Expected job line")
+        }
+        XCTAssertEqual(job.runAsUser, "daemon")
+        XCTAssertEqual(job.command, "/usr/sbin/periodic daily")
+        XCTAssertFalse(job.isEnabled)
+    }
+
+    func test_serializeSystemJob() {
+        let job = CronJob(
+            scope: .system,
+            minute: "0",
+            hour: "3",
+            dayOfMonth: "*",
+            month: "*",
+            weekday: "*",
+            runAsUser: "root",
+            command: "/usr/bin/find /tmp -mtime +7 -delete"
+        )
+        let serialized = CrontabParser.serialize([.job(job)], format: .system)
+        XCTAssertEqual(serialized, "0 3 * * * root /usr/bin/find /tmp -mtime +7 -delete\n")
+    }
+}
+
+// MARK: - BrewServicesService Tests
+
+final class BrewServicesServiceTests: XCTestCase {
+    private struct MockShell: ShellRunner {
+        let brewJSON: String
+        let launchctlOutputs: [String: String]
+
+        func run(_ path: String, arguments: [String]) throws -> String {
+            if path.hasSuffix("/brew"), arguments.first == "services" {
+                return brewJSON
+            }
+            if path.hasSuffix("/launchctl"), arguments.first == "print", arguments.count == 2 {
+                return launchctlOutputs[arguments[1]] ?? "Could not find service"
+            }
+            return ""
+        }
+    }
+
+    func test_listUserServices_parsesJSON() throws {
+        let json = """
+        [{"name":"colima","status":"started","user":"darwin","file":"/opt/homebrew/opt/colima/homebrew.mxcl.colima.plist","exit_code":0}]
+        """
+        let service = BrewServicesService(
+            shell: MockShell(brewJSON: json, launchctlOutputs: [:]),
+            brewPath: "/opt/homebrew/bin/brew"
+        )
+        let items = try service.listServices(scope: .user)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].name, "colima")
+        XCTAssertEqual(items[0].status, .started)
+        XCTAssertEqual(items[0].label, "homebrew.mxcl.colima")
+    }
+
+    func test_listRootServices_usesSystemLaunchctlStatus() throws {
+        let json = """
+        [{"name":"nginx","status":"none","user":null,"file":"/opt/homebrew/opt/nginx/homebrew.mxcl.nginx.plist","exit_code":null}]
+        """
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("brew-root-test-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let daemonPath = tmp.appendingPathComponent("homebrew.mxcl.nginx.plist")
+        try Data().write(to: daemonPath)
+
+        let brewService = BrewServicesService(
+            shell: MockShell(
+                brewJSON: json,
+                launchctlOutputs: ["system/homebrew.mxcl.nginx": "state = running\n"]
+            ),
+            brewPath: "/opt/homebrew/bin/brew",
+            systemDaemonDirectory: tmp.path
+        )
+
+        let items = try brewService.listServices(scope: .root)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].scope, .root)
+        XCTAssertEqual(items[0].status, .started)
+        XCTAssertEqual(items[0].plistPath, daemonPath.path)
+    }
+
+    func test_homebrewServiceStatus_mapping() {
+        XCTAssertEqual(HomebrewServiceStatus(brewStatus: "started"), .started)
+        XCTAssertEqual(HomebrewServiceStatus(brewStatus: "stopped"), .stopped)
+        XCTAssertEqual(HomebrewServiceStatus(brewStatus: "none"), .none)
+        XCTAssertEqual(HomebrewServiceStatus(brewStatus: "error"), .error)
+    }
+}
+
+// MARK: - BrewManagedSupport Tests
+
+final class BrewManagedSupportTests: XCTestCase {
+    func test_formulaName_fromLabel() {
+        XCTAssertEqual(
+            BrewManagedSupport.formulaName(fromLabel: "homebrew.mxcl.cloudflared"),
+            "cloudflared"
+        )
+        XCTAssertNil(BrewManagedSupport.formulaName(fromLabel: "com.cloudflare.cloudflared"))
+    }
+
+    func test_formulaName_fromExecutable_optPath() {
+        XCTAssertEqual(
+            BrewManagedSupport.formulaName(fromExecutable: "/opt/homebrew/opt/postgresql@16/bin/postgres"),
+            "postgresql@16"
+        )
+    }
+
+    func test_formulaName_fromExecutable_binPath() {
+        XCTAssertEqual(
+            BrewManagedSupport.formulaName(fromExecutable: "/opt/homebrew/bin/cloudflared"),
+            "cloudflared"
+        )
+    }
+
+    func test_launchItem_brewManaged() {
+        let item = LaunchItem(
+            label: "homebrew.mxcl.cloudflared",
+            plistURL: URL(fileURLWithPath: "/tmp/test.plist"),
+            scope: .userAgent,
+            program: "/opt/homebrew/bin/cloudflared",
+            programArguments: [],
+            calendarIntervals: [],
+            startInterval: nil,
+            watchPaths: [],
+            runAtLoad: true,
+            keepAlive: false,
+            standardOutPath: nil,
+            standardErrorPath: nil,
+            workingDirectory: nil,
+            isLoaded: false
+        )
+        XCTAssertTrue(item.isBrewManaged)
+        XCTAssertEqual(item.brewFormulaName, "cloudflared")
+    }
+}
+
+// MARK: - ModuleSettings Tests
+
+final class ModuleSettingsTests: XCTestCase {
+    func test_requiresAtLeastOneEnabledModule() {
+        var settings = ModuleSettings()
+        XCTAssertTrue(settings.setEnabled(.agents, enabled: false))
+        XCTAssertTrue(settings.setEnabled(.crontab, enabled: false))
+        XCTAssertTrue(settings.setEnabled(.loginItems, enabled: false))
+        XCTAssertFalse(settings.setEnabled(.services, enabled: false))
+        XCTAssertTrue(settings.isEnabled(.services))
+    }
+
+    func test_enableAll() {
+        var settings = ModuleSettings(agents: false, crontab: false, loginItems: false, services: true)
+        settings.enableAll()
+        XCTAssertEqual(settings.enabledCount, 4)
+    }
+}
