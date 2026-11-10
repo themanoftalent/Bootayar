@@ -1,0 +1,11 @@
+build/
+DerivedData/
+DeveloperSettings.xcconfig
+default.profraw
+
+# Xcode user state
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
