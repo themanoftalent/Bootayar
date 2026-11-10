@@ -6,6 +6,7 @@ enum SidebarSelection: Hashable {
     case crontab
     case loginItems
     case services
+    case about
 
     var appModule: AppModule? {
         switch self {
@@ -13,6 +14,7 @@ enum SidebarSelection: Hashable {
         case .crontab: return .crontab
         case .loginItems: return .loginItems
         case .services: return .services
+        case .about: return nil
         }
     }
 }

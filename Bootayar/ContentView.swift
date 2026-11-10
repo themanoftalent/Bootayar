@@ -211,6 +211,8 @@ struct ContentView: View {
                 )
             case .loginItems:
                 LoginItemsGuideView()
+            case .about:
+                AboutView(updateChecker: updateChecker, isInline: true)
             case .agents, .none:
                 AgentListView(
                     store: store,
@@ -238,6 +240,7 @@ struct ContentView: View {
     }
 
     private func ensureValidSelection() {
+        if selection == .about { return }
         if let current = selection,
            let module = current.appModule,
            moduleSettings.isEnabled(module) {

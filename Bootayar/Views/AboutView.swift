@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AboutView: View {
     @ObservedObject var updateChecker: UpdateChecker
+    var isInline: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -58,16 +59,19 @@ struct AboutView: View {
                 .controlSize(.small)
                 .disabled(updateChecker.isChecking)
 
-                Spacer()
+                if !isInline {
+                    Spacer()
 
-                Button("Close") { dismiss() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    Button("Close") { dismiss() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                }
             }
             .padding(.top, 2)
         }
-        .padding(18)
-        .frame(width: 450)
+        .padding(isInline ? 28 : 18)
+        .frame(width: isInline ? 480 : 450)
+        .frame(maxWidth: isInline ? .infinity : nil, maxHeight: isInline ? .infinity : nil)
     }
 
     private var appVersion: String {

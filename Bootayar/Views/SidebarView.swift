@@ -85,6 +85,15 @@ struct SidebarView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+
+                    SidebarRowButton(
+                        selection: $selection,
+                        tag: .about,
+                        title: Text("About Bootayar"),
+                        subtitle: Text("Developer, license & support"),
+                        icon: "info.circle.fill",
+                        badge: 0
+                    )
                 } header: {
                     Text("HELP")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
