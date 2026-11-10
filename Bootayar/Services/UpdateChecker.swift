@@ -6,6 +6,8 @@ final class UpdateChecker: ObservableObject {
 
     @Published var pendingRelease: GitHubRelease?
     @Published private(set) var isChecking = false
+    @Published var statusMessage: String?
+    @Published var isUpToDate = false
 
     private let defaults: UserDefaults
     private let releaseService: @Sendable (URLSession) async -> GitHubRelease?
@@ -31,12 +33,12 @@ final class UpdateChecker: ObservableObject {
            Calendar.current.isDateInToday(lastCheck) {
             return
         }
-        performCheck(session: session)
+        performCheck(session: session, isManual: false)
     }
 
     func checkNow(session: URLSession = .shared) {
         guard !isChecking else { return }
-        performCheck(session: session)
+        performCheck(session: session, isManual: true)
     }
 
     func skipVersion(_ version: AppVersion) {
@@ -48,20 +50,41 @@ final class UpdateChecker: ObservableObject {
         pendingRelease = nil
     }
 
-    private func performCheck(session: URLSession) {
+    private func performCheck(session: URLSession, isManual: Bool) {
         isChecking = true
+        if isManual {
+            statusMessage = nil
+            isUpToDate = false
+        }
         Task {
             let release = await releaseService(session)
             defaults.set(Date(), forKey: Keys.lastUpdateCheckDate)
             isChecking = false
-            guard let release else { return }
+
+            guard let release else {
+                if isManual {
+                    statusMessage = "Unable to check GitHub releases right now."
+                    isUpToDate = false
+                }
+                return
+            }
 
             let current = AppVersion.current
-            guard release.version.isNewer(than: current) else { return }
+            guard release.version.isNewer(than: current) else {
+                if isManual {
+                    statusMessage = "Bootayar v\(current.displayString) is up to date."
+                    isUpToDate = true
+                }
+                return
+            }
 
-            let skipped = defaults.string(forKey: Keys.skippedUpdateVersion)
-            if skipped == release.version.displayString { return }
+            if !isManual {
+                let skipped = defaults.string(forKey: Keys.skippedUpdateVersion)
+                if skipped == release.version.displayString { return }
+            }
 
+            statusMessage = "New version v\(release.version.displayString) available!"
+            isUpToDate = false
             pendingRelease = release
         }
     }

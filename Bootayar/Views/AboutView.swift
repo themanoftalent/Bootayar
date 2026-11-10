@@ -49,19 +49,32 @@ struct AboutView: View {
                 OpenSourceCard()
                 FollowSupportCard()
 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Button {
                         updateChecker.checkNow()
                     } label: {
                         if updateChecker.isChecking {
-                            ProgressView().controlSize(.small)
+                            HStack(spacing: 6) {
+                                ProgressView().controlSize(.small)
+                                Text("Checking…")
+                            }
                         } else {
-                            Text("Check for Updates…")
+                            Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
                         }
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(updateChecker.isChecking)
+
+                    if let status = updateChecker.statusMessage {
+                        HStack(spacing: 4) {
+                            Image(systemName: updateChecker.isUpToDate ? "checkmark.circle.fill" : "info.circle.fill")
+                                .foregroundStyle(updateChecker.isUpToDate ? BootayarTheme.emerald : BootayarTheme.indigo)
+                            Text(status)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
 
                     Spacer()
 
