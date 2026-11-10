@@ -90,7 +90,7 @@ struct SidebarView: View {
                         selection: $selection,
                         tag: .about,
                         title: Text("About Bootayar"),
-                        subtitle: Text("Developer, license & support"),
+                        subtitle: Text("Developer & support"),
                         icon: "info.circle.fill",
                         badge: 0
                     )
@@ -131,15 +131,21 @@ struct SidebarView: View {
 
                 Spacer()
 
-                Text(AppVersion.current.displayString)
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(BootayarTheme.softViolet)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2.5)
-                    .background(
-                        Capsule()
-                            .fill(BootayarTheme.electricViolet.opacity(0.12))
-                    )
+                Button {
+                    selection = .about
+                } label: {
+                    Text(AppVersion.current.displayString)
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(BootayarTheme.softViolet)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2.5)
+                        .background(
+                            Capsule()
+                                .fill(BootayarTheme.electricViolet.opacity(0.12))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help("About Bootayar")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)

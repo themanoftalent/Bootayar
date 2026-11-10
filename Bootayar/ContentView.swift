@@ -212,7 +212,7 @@ struct ContentView: View {
             case .loginItems:
                 LoginItemsGuideView()
             case .about:
-                AboutView(updateChecker: updateChecker, isInline: true)
+                AboutView(updateChecker: updateChecker, isInlinePage: true)
             case .agents, .none:
                 AgentListView(
                     store: store,

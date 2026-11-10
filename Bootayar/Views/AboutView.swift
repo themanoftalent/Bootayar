@@ -3,75 +3,82 @@ import SwiftUI
 
 struct AboutView: View {
     @ObservedObject var updateChecker: UpdateChecker
-    var isInline: Bool = false
+    var isInlinePage: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 14) {
-            VStack(spacing: 6) {
-                if let icon = NSImage(named: NSImage.applicationIconName) {
-                    Image(nsImage: icon)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 68, height: 68)
-                        .shadow(color: Color.black.opacity(0.18), radius: 8, x: 0, y: 4)
-                } else {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(BootayarTheme.brandGradient)
-                            .frame(width: 68, height: 68)
-                        Image(systemName: "power")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                }
-
-                VStack(spacing: 3) {
-                    Text("Bootayar")
-                        .font(.system(size: 20, weight: .bold))
-                    Text("Version \(appVersion)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-
-                Text("Manage startup apps, background services, and scheduled tasks.")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16)
-            }
-            .padding(.top, 4)
-
-            OpenSourceCard()
-            FollowSupportCard()
-
-            HStack(spacing: 12) {
-                Button {
-                    updateChecker.checkNow()
-                } label: {
-                    if updateChecker.isChecking {
-                        ProgressView().controlSize(.small)
+        ScrollView {
+            VStack(spacing: 16) {
+                VStack(spacing: 6) {
+                    if let icon = NSImage(named: NSImage.applicationIconName) {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 72, height: 72)
+                            .shadow(color: Color.black.opacity(0.18), radius: 8, x: 0, y: 4)
                     } else {
-                        Text("Check for Updates…")
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(BootayarTheme.brandGradient)
+                                .frame(width: 72, height: 72)
+                            Image(systemName: "power")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
                     }
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(updateChecker.isChecking)
 
-                if !isInline {
+                    VStack(spacing: 3) {
+                        Text("Bootayar")
+                            .font(.system(size: 22, weight: .bold))
+                        Text("macOS Startup & Automation Manager")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.primary.opacity(0.85))
+                        Text("Version \(appVersion)")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Text("Manage startup apps, background services, and scheduled tasks.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
+                }
+                .padding(.top, 8)
+
+                OpenSourceCard()
+                FollowSupportCard()
+
+                HStack(spacing: 12) {
+                    Button {
+                        updateChecker.checkNow()
+                    } label: {
+                        if updateChecker.isChecking {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Check for Updates…")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(updateChecker.isChecking)
+
                     Spacer()
 
-                    Button("Close") { dismiss() }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
+                    if !isInlinePage {
+                        Button("Close") { dismiss() }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                    }
                 }
+                .padding(.top, 2)
             }
-            .padding(.top, 2)
+            .padding(24)
+            .frame(maxWidth: 500)
+            .frame(maxWidth: .infinity)
         }
-        .padding(isInline ? 28 : 18)
-        .frame(width: isInline ? 480 : 450)
-        .frame(maxWidth: isInline ? .infinity : nil, maxHeight: isInline ? .infinity : nil)
+        .frame(minWidth: isInlinePage ? nil : 460, minHeight: isInlinePage ? nil : 430)
+        .navigationTitle("About Bootayar")
     }
 
     private var appVersion: String {
