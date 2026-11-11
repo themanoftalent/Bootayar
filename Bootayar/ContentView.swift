@@ -9,6 +9,7 @@ struct ContentView: View {
     @StateObject private var serviceStore = ServiceStore()
     @StateObject private var updateChecker = UpdateChecker()
     @ObservedObject private var lang = LanguageManager.shared
+    @ObservedObject private var theme = ThemeManager.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: SidebarSelection? = .agents
     @State private var showingNewAgent = false
@@ -53,11 +54,12 @@ struct ContentView: View {
                 showModuleSettings: $showModuleSettings,
                 onHelpTapped: { showHelpConfirm = true }
             )
-            .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 280)
+            .navigationSplitViewColumnWidth(min: 245, ideal: 260, max: 300)
         } detail: {
             detailView
         }
-        .id(lang.currentLanguage)
+        .id("\(lang.currentLanguage)-\(theme.currentTheme.rawValue)")
+        .preferredColorScheme(theme.colorScheme)
         .modifier(ConditionalSearchable(
             isEnabled: (isAgentsView || isCrontabView) && !isLoginItemsGuide && !isServicesView,
             text: $searchText,

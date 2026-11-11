@@ -8,6 +8,7 @@ extension Notification.Name {
 @main
 struct BootayarApp: App {
     @ObservedObject private var lang = LanguageManager.shared
+    @ObservedObject private var theme = ThemeManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -15,6 +16,10 @@ struct BootayarApp: App {
                 .frame(minWidth: 760, minHeight: 500)
                 .tint(BootayarTheme.indigo)
                 .environment(\.locale, lang.locale)
+                .preferredColorScheme(theme.colorScheme)
+                .onAppear {
+                    theme.applyAppearance()
+                }
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
@@ -23,6 +28,14 @@ struct BootayarApp: App {
             CommandGroup(replacing: .appInfo) {
                 Button(L("About Bootayar")) {
                     NotificationCenter.default.post(name: .showAbout, object: nil)
+                }
+            }
+            CommandMenu(L("Theme")) {
+                Button(theme.currentTheme == .normal ? "✓ \(L("Normal Theme"))" : L("Normal Theme")) {
+                    theme.setTheme(.normal)
+                }
+                Button(theme.currentTheme == .dark ? "✓ \(L("Dark Theme"))" : L("Dark Theme")) {
+                    theme.setTheme(.dark)
                 }
             }
             CommandMenu(L("Language")) {

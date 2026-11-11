@@ -10,6 +10,7 @@ struct SidebarView: View {
     @Binding var showModuleSettings: Bool
     var onHelpTapped: () -> Void
     @ObservedObject private var lang = LanguageManager.shared
+    @ObservedObject private var theme = ThemeManager.shared
 
     private var agentCount: Int {
         store.items.count + store.invalidItems.count
@@ -108,19 +109,20 @@ struct SidebarView: View {
             Divider()
                 .opacity(0.6)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 6) {
                 Button {
                     showModuleSettings = true
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Image(systemName: "slider.horizontal.3")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(BootayarTheme.indigo)
                         Text(L("Choose Tools"))
                             .font(.caption.weight(.medium))
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 7)
                     .padding(.vertical, 4)
                     .background(
                         Capsule()
@@ -130,7 +132,28 @@ struct SidebarView: View {
                 .buttonStyle(.plain)
                 .help(L("Choose which tools appear in the sidebar"))
 
-                Spacer()
+                Spacer(minLength: 4)
+
+                Button {
+                    theme.toggleTheme()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: theme.isDark ? "moon.fill" : "sun.max.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(L(theme.isDark ? "Dark" : "Normal"))
+                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(theme.isDark ? BootayarTheme.softViolet : BootayarTheme.amber)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill((theme.isDark ? BootayarTheme.electricViolet : BootayarTheme.amber).opacity(0.14))
+                    )
+                    .fixedSize()
+                }
+                .buttonStyle(.plain)
+                .help(L(theme.isDark ? "Switch to Normal Theme" : "Switch to Dark Theme"))
 
                 Button {
                     lang.toggleLanguage()
@@ -148,6 +171,7 @@ struct SidebarView: View {
                         Capsule()
                             .fill(BootayarTheme.indigo.opacity(0.12))
                     )
+                    .fixedSize()
                 }
                 .buttonStyle(.plain)
                 .help(lang.currentLanguage == "en" ? "Türkçe'ye geç (Switch to Turkish)" : "Switch to English (İngilizce'ye geç)")
@@ -164,11 +188,12 @@ struct SidebarView: View {
                             Capsule()
                                 .fill(BootayarTheme.electricViolet.opacity(0.12))
                         )
+                        .fixedSize()
                 }
                 .buttonStyle(.plain)
                 .help(L("About Bootayar"))
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .padding(.vertical, 10)
         }
     }

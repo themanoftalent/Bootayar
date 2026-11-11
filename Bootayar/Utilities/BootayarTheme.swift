@@ -1,5 +1,78 @@
 import AppKit
+import Combine
 import SwiftUI
+
+enum AppThemeMode: String, CaseIterable, Identifiable {
+    case normal = "normal"
+    case dark = "dark"
+
+    var id: String { rawValue }
+
+    var colorScheme: ColorScheme {
+        switch self {
+        case .normal: return .light
+        case .dark: return .dark
+        }
+    }
+
+    var nsAppearanceName: NSAppearance.Name {
+        switch self {
+        case .normal: return .aqua
+        case .dark: return .darkAqua
+        }
+    }
+}
+
+final class ThemeManager: ObservableObject {
+    static let shared = ThemeManager()
+
+    @Published private(set) var currentTheme: AppThemeMode
+
+    private let storageKey = "appThemeMode"
+
+    private init() {
+        if let saved = UserDefaults.standard.string(forKey: storageKey),
+           let mode = AppThemeMode(rawValue: saved) {
+            currentTheme = mode
+        } else {
+            let isSystemDark = NSApplication.shared.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            currentTheme = isSystemDark ? .dark : .normal
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.applyAppearance()
+        }
+    }
+
+    var isDark: Bool {
+        currentTheme == .dark
+    }
+
+    var colorScheme: ColorScheme {
+        currentTheme.colorScheme
+    }
+
+    func setTheme(_ mode: AppThemeMode) {
+        guard currentTheme != mode else {
+            applyAppearance()
+            return
+        }
+        currentTheme = mode
+        UserDefaults.standard.set(mode.rawValue, forKey: storageKey)
+        applyAppearance()
+    }
+
+    func toggleTheme() {
+        setTheme(currentTheme == .dark ? .normal : .dark)
+    }
+
+    func applyAppearance() {
+        let appearance = NSAppearance(named: currentTheme.nsAppearanceName)
+        NSApp?.appearance = appearance
+        for window in NSApp?.windows ?? [] {
+            window.appearance = appearance
+        }
+    }
+}
 
 enum BootayarTheme {
     // Brand colors
