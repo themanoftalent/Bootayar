@@ -9,6 +9,7 @@ struct SidebarView: View {
     @ObservedObject var serviceStore: ServiceStore
     @Binding var showModuleSettings: Bool
     var onHelpTapped: () -> Void
+    @AppStorage("appLanguage") private var appLanguage: String = "en"
 
     private var agentCount: Int {
         store.items.count + store.invalidItems.count
@@ -130,6 +131,28 @@ struct SidebarView: View {
                 .help("Choose which tools appear in the sidebar")
 
                 Spacer()
+
+                Button {
+                    let next = appLanguage == "en" ? "tr" : "en"
+                    appLanguage = next
+                    UserDefaults.standard.set([next], forKey: "AppleLanguages")
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 10.5, weight: .semibold))
+                        Text(appLanguage.uppercased())
+                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(BootayarTheme.indigo)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(BootayarTheme.indigo.opacity(0.12))
+                    )
+                }
+                .buttonStyle(.plain)
+                .help(appLanguage == "en" ? "Türkçe'ye geç (Switch to Turkish)" : "Switch to English (İngilizce'ye geç)")
 
                 Button {
                     selection = .about

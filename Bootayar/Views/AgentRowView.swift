@@ -113,7 +113,7 @@ struct AgentRowView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if let firstTrigger = item.triggerSummaryLines.first {
-                        Text(firstTrigger)
+                        Text(LocalizedStringKey(firstTrigger))
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
