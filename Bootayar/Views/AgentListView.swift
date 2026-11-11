@@ -105,7 +105,7 @@ struct AgentListView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationTitle("Launch Agents")
+        .navigationTitle(L("Launch Agents"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -122,20 +122,20 @@ struct AgentListView: View {
                         newAgentScope = .userAgent
                         showingNewFromXml = true
                     } label: {
-                        Label("Paste from XML…", systemImage: "doc.on.clipboard")
+                        Label(L("Paste from XML…"), systemImage: "doc.on.clipboard")
                     }
                 } label: {
-                    Label("New", systemImage: "plus")
+                    Label(L("New"), systemImage: "plus")
                 }
             }
             ToolbarItem {
                 Button { pickAndImportPlist() } label: {
-                    Label("Import", systemImage: "square.and.arrow.down")
+                    Label(L("Import"), systemImage: "square.and.arrow.down")
                 }
             }
             ToolbarItem {
                 Button { refreshAll() } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label(L("Refresh"), systemImage: "arrow.clockwise")
                 }
                 .disabled(homebrewStore.isRefreshing)
             }
@@ -148,21 +148,20 @@ struct AgentListView: View {
                 onImported: { item in bootstrapAfterImport = item }
             )
         }
-        .confirmationDialog(
-            "Load Agent Now?",
+        .confirmationDialog(L("Load Agent Now?"),
             isPresented: Binding(
                 get: { bootstrapAfterImport != nil },
                 set: { if !$0 { bootstrapAfterImport = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Load") {
+            Button(L("Load")) {
                 if let item = bootstrapAfterImport {
                     store.bootstrap(item) { errorMessage = $0 }
                 }
                 bootstrapAfterImport = nil
             }
-            Button("Later", role: .cancel) {
+            Button(L("Later"), role: .cancel) {
                 bootstrapAfterImport = nil
             }
         } message: {
@@ -270,9 +269,9 @@ struct AgentListView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(BootayarTheme.amber)
                 }
-                Text("Unregistered Homebrew Services")
+                Text(L("Unregistered Homebrew Services"))
                     .font(.headline)
-                Text("\(unregisteredBrewServices.count)")
+                Text(L("\(unregisteredBrewServices.count)"))
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(BootayarTheme.amber)
                     .padding(.horizontal, 7)
@@ -330,14 +329,14 @@ struct AgentListView: View {
         importRequest = ImportPlistRequest(url: url)
     }
 
-    private var emptyTitle: LocalizedStringKey {
+    private var emptyTitle: String {
         if listFilter == .homebrew {
             return searchText.isEmpty ? "No Homebrew Services" : "No Matching Results"
         }
         return searchText.isEmpty ? "No Agents" : "No Matching Results"
     }
 
-    private var emptyDescription: LocalizedStringKey {
+    private var emptyDescription: String {
         if listFilter == .homebrew {
             return searchText.isEmpty
                 ? "Installed brew formulas will appear in their scope once started"
@@ -388,7 +387,7 @@ struct AgentListView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
-                    Text("\(count)")
+                    Text(L("\(count)"))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(BootayarTheme.indigo)
                         .padding(.horizontal, 7)

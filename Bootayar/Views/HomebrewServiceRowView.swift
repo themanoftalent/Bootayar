@@ -4,7 +4,7 @@ struct HomebrewServiceRowView: View {
     let service: HomebrewService
     @ObservedObject var store: HomebrewServiceStore
     @Binding var errorMessage: String?
-    var startButtonTitle: LocalizedStringKey = "Start"
+    var startButtonTitle: String = "Start"
 
     @State private var isExpanded = false
 
@@ -27,7 +27,7 @@ struct HomebrewServiceRowView: View {
         }
     }
 
-    private var statusBadgeTitle: LocalizedStringKey {
+    private var statusBadgeTitle: String {
         if let pending { return pending.localizedLabel }
         switch service.status {
         case .started: return "Running"
@@ -40,7 +40,7 @@ struct HomebrewServiceRowView: View {
 
     private var statusTooltip: String {
         if let exitCode = service.exitCode, service.status == .error {
-            return String(localized: "\(service.status.localizedName) (exit code \(exitCode))")
+            return L("\(service.status.localizedName) (exit code \(exitCode))")
         }
         return service.status.localizedName
     }
@@ -92,11 +92,11 @@ struct HomebrewServiceRowView: View {
                         detailRow("Plist", FilePathNormalizer.display(path))
                     }
                     if service.scope.requiresPrivilege {
-                        detailRow("Privilege", String(localized: "Administrator password required to start/stop"))
+                        detailRow("Privilege", L("Administrator password required to start/stop"))
                     }
                     HStack(spacing: 8) {
                         if service.isRunning {
-                            Button("Restart") {
+                            Button(L("Restart")) {
                                 store.restart(service) { errorMessage = $0 }
                             }
                             .buttonStyle(.bordered).controlSize(.small)
@@ -126,7 +126,7 @@ struct HomebrewServiceRowView: View {
             .controlSize(.small)
             .disabled(true)
         } else if service.isRunning {
-            Button("Stop") {
+            Button(L("Stop")) {
                 store.stop(service) { errorMessage = $0 }
             }
             .buttonStyle(.borderedProminent)
@@ -140,7 +140,7 @@ struct HomebrewServiceRowView: View {
         }
     }
 
-    private func detailRow(_ label: LocalizedStringKey, _ value: String) -> some View {
+    private func detailRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
                 .foregroundStyle(.secondary)

@@ -13,7 +13,7 @@ struct CronRowView: View {
         job.isEnabled ? BootayarTheme.emerald : BootayarTheme.amber
     }
 
-    private var statusTooltip: LocalizedStringKey {
+    private var statusTooltip: String {
         job.isEnabled ? "Enabled" : "Disabled"
     }
 
@@ -91,7 +91,7 @@ struct CronRowView: View {
                     detailRow("Command", FilePathNormalizer.display(job.command))
                     detailRow("Source", job.scope.sourceDescription)
                     if job.scope.requiresPrivilege {
-                        detailRow("Privilege", String(localized: "Administrator password required to save"))
+                        detailRow("Privilege", L("Administrator password required to save"))
                     }
                 }
                 .padding(.horizontal, 14)
@@ -104,11 +104,11 @@ struct CronRowView: View {
             EditCronSheet(existingJob: job, scope: job.scope, store: store, errorMessage: $errorMessage)
         }
         .confirmationDialog(
-            String(localized: "Delete this Cron job?"),
+            L("Delete this Cron job?"),
             isPresented: $showingDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
+            Button(L("Delete"), role: .destructive) {
                 do { try store.deleteJob(id: job.id, scope: job.scope) }
                 catch PrivilegeError.cancelled { }
                 catch { errorMessage = error.localizedDescription }
@@ -128,7 +128,7 @@ struct CronRowView: View {
     @ViewBuilder
     private var primaryActionButton: some View {
         if job.isEnabled {
-            Button("Disable") {
+            Button(L("Disable")) {
                 do { try store.setEnabled(id: job.id, scope: job.scope, enabled: false) }
                 catch PrivilegeError.cancelled { }
                 catch { errorMessage = error.localizedDescription }
@@ -136,7 +136,7 @@ struct CronRowView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
         } else {
-            Button("Enable") {
+            Button(L("Enable")) {
                 do { try store.setEnabled(id: job.id, scope: job.scope, enabled: true) }
                 catch PrivilegeError.cancelled { }
                 catch { errorMessage = error.localizedDescription }
@@ -146,7 +146,7 @@ struct CronRowView: View {
         }
     }
 
-    private func detailRow(_ label: LocalizedStringKey, _ value: String) -> some View {
+    private func detailRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
                 .foregroundStyle(.secondary)

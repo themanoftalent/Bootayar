@@ -50,7 +50,7 @@ struct InvalidPlistRowView: View {
                     .opacity(0.6)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .top, spacing: 8) {
-                        Text("Path")
+                        Text(L("Path"))
                             .foregroundStyle(.secondary)
                             .frame(width: 42, alignment: .leading)
                         Text(FilePathNormalizer.display(item.url.path))
@@ -58,7 +58,7 @@ struct InvalidPlistRowView: View {
                             .textSelection(.enabled)
                     }
                     .font(.caption)
-                    Text("This file is empty or malformed and cannot be loaded by launchd.")
+                    Text(L("This file is empty or malformed and cannot be loaded by launchd."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.top, 2)
@@ -70,16 +70,16 @@ struct InvalidPlistRowView: View {
         }
         .bootayarCard(statusColor: BootayarTheme.crimson, isExpanded: isExpanded)
         .confirmationDialog(
-            String(localized: "Delete \(item.url.lastPathComponent)?"),
+            L("Delete \(item.url.lastPathComponent)?"),
             isPresented: $showingDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
+            Button(L("Delete"), role: .destructive) {
                 do { try store.deleteInvalid(item) }
                 catch { errorMessage = error.localizedDescription }
             }
         } message: {
-            Text("This will permanently delete the plist file. This cannot be undone.")
+            Text(L("This will permanently delete the plist file. This cannot be undone."))
         }
     }
 }

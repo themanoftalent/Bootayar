@@ -48,8 +48,8 @@ struct EditCronSheet: View {
 
     var body: some View {
         Form {
-            Section("Schedule") {
-                Picker("Frequency", selection: $preset) {
+            Section(L("Schedule")) {
+                Picker(L("Frequency"), selection: $preset) {
                     ForEach(SchedulePreset.allCases, id: \.self) { value in
                         Text(value.title).tag(value)
                     }
@@ -67,7 +67,7 @@ struct EditCronSheet: View {
                     StepperField(title: "Hours", value: $hour, range: 0...23)
                     StepperField(title: "Minutes", value: $minute, range: 0...59)
                 case .weekly:
-                    Picker("Weekdays", selection: $weekday) {
+                    Picker(L("Weekdays"), selection: $weekday) {
                         ForEach(WeekdayOption.allCases) { option in
                             Text(option.title).tag(option.value)
                         }
@@ -91,7 +91,7 @@ struct EditCronSheet: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Command") {
+            Section(L("Command")) {
                 if scope == .system {
                     TextField("Run as User", text: $runAsUser)
                         .font(.system(.body, design: .monospaced))
@@ -99,12 +99,12 @@ struct EditCronSheet: View {
                 TextField("Command to execute", text: $command, axis: .vertical)
                     .lineLimit(2...6)
                     .font(.system(.body, design: .monospaced))
-                Toggle("Enable", isOn: $isEnabled)
+                Toggle(L("Enable"), isOn: $isEnabled)
             }
 
             if scope.requiresPrivilege {
                 Section {
-                    Text("Administrator password required when saving system crontab.")
+                    Text(L("Administrator password required when saving system crontab."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -115,10 +115,10 @@ struct EditCronSheet: View {
         .navigationTitle(existingJob == nil ? "New Cron Job" : "Edit Cron Job")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button(L("Cancel")) { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
+                Button(L("Save")) { save() }
                     .disabled(!canSave)
             }
         }
@@ -201,7 +201,7 @@ private enum SchedulePreset: CaseIterable {
     case monthly
     case custom
 
-    var title: LocalizedStringKey {
+    var title: String {
         switch self {
         case .everyMinute: return "Every minute"
         case .hourly: return "Hourly"
@@ -240,7 +240,7 @@ private enum SchedulePreset: CaseIterable {
 
 private struct WeekdayOption: Identifiable {
     let value: String
-    let title: LocalizedStringKey
+    let title: String
     var id: String { value }
 
     static let allCases: [WeekdayOption] = [
@@ -255,7 +255,7 @@ private struct WeekdayOption: Identifiable {
 }
 
 private struct StepperField: View {
-    let title: LocalizedStringKey
+    let title: String
     @Binding var value: String
     let range: ClosedRange<Int>
 

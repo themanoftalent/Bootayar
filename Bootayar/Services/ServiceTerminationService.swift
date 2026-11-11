@@ -31,7 +31,7 @@ struct ServiceTerminationService: Sendable {
                 try await docker.stopContainer(reference: reference)
             } catch {
                 throw ServiceTerminationError.dockerFailed(
-                    String(localized: "Failed to stop Docker container: \(error.localizedDescription)")
+                    L("Failed to stop Docker container: \(error.localizedDescription)")
                 )
             }
         case .blocked(let reason):

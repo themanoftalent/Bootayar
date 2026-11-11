@@ -7,43 +7,43 @@ enum CrontabScope: String, CaseIterable, Hashable {
 
     var displayName: String {
         switch self {
-        case .user: return String(localized: "User Crontab")
-        case .system: return String(localized: "System Crontab")
+        case .user: return L("User Crontab")
+        case .system: return L("System Crontab")
         }
     }
 
-    var sectionTitle: LocalizedStringKey {
+    var sectionTitle: String {
         switch self {
-        case .user: return "User Crontab"
-        case .system: return "System Crontab"
+        case .user: return L("User Crontab")
+        case .system: return L("System Crontab")
         }
     }
 
-    var sectionSubtitle: LocalizedStringKey {
+    var sectionSubtitle: String {
         switch self {
-        case .user: return "crontab -l"
-        case .system: return "/etc/crontab"
+        case .user: return L("crontab -l")
+        case .system: return L("/etc/crontab")
         }
     }
 
     var systemImage: String {
         switch self {
-        case .user: return "person.circle"
-        case .system: return "server.rack"
+        case .user: return L("person.circle")
+        case .system: return L("server.rack")
         }
     }
 
-    var newJobMenuTitle: LocalizedStringKey {
+    var newJobMenuTitle: String {
         switch self {
-        case .user: return "New User Cron Job"
-        case .system: return "New System Cron Job"
+        case .user: return L("New User Cron Job")
+        case .system: return L("New System Cron Job")
         }
     }
 
     var sourceDescription: String {
         switch self {
-        case .user: return "crontab -l"
-        case .system: return "/etc/crontab"
+        case .user: return L("crontab -l")
+        case .system: return L("/etc/crontab")
         }
     }
 

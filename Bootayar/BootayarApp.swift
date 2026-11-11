@@ -7,36 +7,34 @@ extension Notification.Name {
 
 @main
 struct BootayarApp: App {
-    @AppStorage("appLanguage") private var appLanguage: String = "en"
+    @ObservedObject private var lang = LanguageManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .frame(minWidth: 760, minHeight: 500)
                 .tint(BootayarTheme.indigo)
-                .environment(\.locale, Locale(identifier: appLanguage))
+                .environment(\.locale, lang.locale)
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) { }
             CommandGroup(replacing: .appInfo) {
-                Button("About Bootayar") {
+                Button(L("About Bootayar")) {
                     NotificationCenter.default.post(name: .showAbout, object: nil)
                 }
             }
-            CommandMenu("Language") {
-                Button(appLanguage == "en" ? "✓ English" : "English") {
-                    appLanguage = "en"
-                    UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
+            CommandMenu(L("Language")) {
+                Button(lang.currentLanguage == "en" ? "✓ English" : "English") {
+                    lang.setLanguage("en")
                 }
-                Button(appLanguage == "tr" ? "✓ Türkçe" : "Türkçe") {
-                    appLanguage = "tr"
-                    UserDefaults.standard.set(["tr"], forKey: "AppleLanguages")
+                Button(lang.currentLanguage == "tr" ? "✓ Türkçe" : "Türkçe") {
+                    lang.setLanguage("tr")
                 }
             }
             CommandGroup(replacing: .help) {
-                Button("Bootayar Help") {
+                Button(L("Bootayar Help")) {
                     if let url = URL(string: "https://github.com/themanoftalent/Bootayar#readme") {
                         NSWorkspace.shared.open(url)
                     }

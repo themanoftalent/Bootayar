@@ -50,7 +50,7 @@ struct AgentRowView: View {
         return BootayarTheme.neutralSlate
     }
 
-    private var statusBadgeTitle: LocalizedStringKey {
+    private var statusBadgeTitle: String {
         if let pending { return pending.localizedLabel }
         if usesBrewOperations, let brewService {
             switch brewService.status {
@@ -70,27 +70,27 @@ struct AgentRowView: View {
 
     private var statusTooltip: String {
         if item.isDisabledByOverride {
-            return String(localized: "Disabled by system (launchctl override)")
+            return L("Disabled by system (launchctl override)")
         }
         if usesBrewOperations, let brewService {
             if let exitCode = brewService.exitCode, brewService.status == .error {
-                return String(localized: "Homebrew: \(brewService.status.localizedName) (exit code \(exitCode))")
+                return L("Homebrew: \(brewService.status.localizedName) (exit code \(exitCode))")
             }
             if brewService.status == .stopped, item.pid != nil {
-                return String(localized: "Brew stopped, but process is still running (PID \(item.pid!))")
+                return L("Brew stopped, but process is still running (PID \(item.pid!))")
             }
             if brewService.status == .started, item.pid == nil {
-                return String(localized: "Brew: started, waiting for process")
+                return L("Brew: started, waiting for process")
             }
             return "Homebrew: \(brewService.status.localizedName)"
         }
-        if let pid = item.pid { return String(localized: "Running (PID \(pid))") }
+        if let pid = item.pid { return L("Running (PID \(pid))") }
         if let code = item.lastExitCode {
-            if code == 0  { return String(localized: "Last run: exited normally (0)") }
-            if code < 0   { return String(localized: "Stopped (signal \(-code))") }
-            return String(localized: "Last run: exit code \(code)")
+            if code == 0  { return L("Last run: exited normally (0)") }
+            if code < 0   { return L("Stopped (signal \(-code))") }
+            return L("Last run: exit code \(code)")
         }
-        return String(localized: item.isLoaded ? "Loaded, waiting for trigger" : "Not loaded")
+        return L(item.isLoaded ? "Loaded, waiting for trigger" : "Not loaded")
     }
 
     var body: some View {
@@ -113,7 +113,7 @@ struct AgentRowView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if let firstTrigger = item.triggerSummaryLines.first {
-                        Text(LocalizedStringKey(firstTrigger))
+                        Text(L(firstTrigger))
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -123,7 +123,7 @@ struct AgentRowView: View {
                 Spacer()
 
                 if let pid = item.pid {
-                    Text("PID \(pid)")
+                    Text(L("PID \(pid)"))
                         .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                         .foregroundStyle(BootayarTheme.emerald)
                         .padding(.horizontal, 6)
@@ -140,7 +140,7 @@ struct AgentRowView: View {
                     }
                     .buttonStyle(.borderless)
                     .disabled(isRowLocked)
-                    .help("Edit")
+                    .help(L("Edit"))
 
                     Button(role: .destructive) {
                         showingDeleteConfirm = true
@@ -150,7 +150,7 @@ struct AgentRowView: View {
                     }
                     .buttonStyle(.borderless)
                     .disabled(isRowLocked)
-                    .help("Delete")
+                    .help(L("Delete"))
 
                     Button {
                         withAnimation(.easeInOut(duration: 0.16)) { isExpanded.toggle() }
@@ -175,7 +175,7 @@ struct AgentRowView: View {
                         detailRow("Formula", formula)
                     }
                     if usesBrewOperations, let brewService {
-                        detailRow("Managed By", String(localized: "brew services"))
+                        detailRow("Managed By", L("brew services"))
                         detailRow("Brew Status", brewService.status.localizedName)
                         if let exitCode = brewService.exitCode {
                             detailRow("Exit Code", "\(exitCode)")
@@ -190,23 +190,23 @@ struct AgentRowView: View {
                     HStack(spacing: 8) {
                         if usesBrewOperations, let brewService, let brewActions {
                             if brewService.isRunning {
-                                Button("Restart") {
+                                Button(L("Restart")) {
                                     brewActions.onRestart(brewService)
                                 }
                                 .buttonStyle(.bordered).controlSize(.small)
                                 .disabled(isRowLocked)
                             }
                         } else if item.isLoaded {
-                            Button("Unload") {
+                            Button(L("Unload")) {
                                 store.bootout(item) { errorMessage = $0 }
                             }
                             .buttonStyle(.bordered).controlSize(.small)
                             .disabled(isRowLocked)
                         }
-                        Button("Clone…") { showingClone = true }
+                        Button(L("Clone…")) { showingClone = true }
                             .buttonStyle(.bordered).controlSize(.small)
                             .disabled(isRowLocked)
-                        Button("View Logs") { showingLog = true }
+                        Button(L("View Logs")) { showingLog = true }
                             .buttonStyle(.bordered).controlSize(.small)
                             .disabled(isRowLocked)
                     }
@@ -228,16 +228,16 @@ struct AgentRowView: View {
             LogViewerSheet(item: item)
         }
         .confirmationDialog(
-            String(localized: "Delete \(item.label)?"),
+            L("Delete \(item.label)?"),
             isPresented: $showingDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
+            Button(L("Delete"), role: .destructive) {
                 do { try store.delete(item) }
                 catch { errorMessage = error.localizedDescription }
             }
         } message: {
-            Text("This will unload and permanently delete the plist file. This cannot be undone.")
+            Text(L("This will unload and permanently delete the plist file. This cannot be undone."))
         }
     }
 
@@ -255,40 +255,40 @@ struct AgentRowView: View {
             .disabled(true)
         } else if usesBrewOperations, let brewService, let brewActions {
             if brewService.isRunning {
-                Button("Stop") {
+                Button(L("Stop")) {
                     brewActions.onStop(brewService)
                 }
                 .buttonStyle(.borderedProminent).controlSize(.small)
             } else {
-                Button("Start") {
+                Button(L("Start")) {
                     brewActions.onStart(brewService)
                 }
                 .buttonStyle(.bordered).controlSize(.small)
             }
         } else if item.pid != nil {
-            Button("Stop") {
+            Button(L("Stop")) {
                 store.stop(item) { errorMessage = $0 }
             }
             .buttonStyle(.borderedProminent).controlSize(.small)
         } else if item.isDisabledByOverride && !item.isLoaded {
-            Button("Enable") {
+            Button(L("Enable")) {
                 store.enable(item) { errorMessage = $0 }
             }
             .buttonStyle(.borderedProminent).controlSize(.small)
         } else if item.isLoaded {
-            Button("Start") {
+            Button(L("Start")) {
                 store.start(item) { errorMessage = $0 }
             }
             .buttonStyle(.bordered).controlSize(.small)
         } else {
-            Button("Load") {
+            Button(L("Load")) {
                 store.bootstrap(item) { errorMessage = $0 }
             }
             .buttonStyle(.bordered).controlSize(.small)
         }
     }
 
-    private func detailRow(_ label: LocalizedStringKey, _ value: String) -> some View {
+    private func detailRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
                 .foregroundStyle(.secondary)

@@ -20,10 +20,10 @@ struct CloneAgentSheet: View {
 
     var body: some View {
         Form {
-            Section("New Job") {
+            Section(L("New Job")) {
                 TextField("Label", text: $newLabel)
                     .textFieldStyle(.roundedBorder)
-                Picker("Scope", selection: $scope) {
+                Picker(L("Scope"), selection: $scope) {
                     ForEach(LaunchItem.Scope.allCases, id: \.self) { s in
                         Text(s.sectionTitle).tag(s)
                     }
@@ -40,13 +40,13 @@ struct CloneAgentSheet: View {
         }
         .formStyle(.grouped)
         .frame(minWidth: 400, minHeight: 200)
-        .navigationTitle("Clone Agent")
+        .navigationTitle(L("Clone Agent"))
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button(L("Cancel")) { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Create") { clone() }
+                Button(L("Create")) { clone() }
                     .disabled(newLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }

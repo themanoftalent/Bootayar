@@ -8,10 +8,10 @@ struct ModuleSettingsSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Choose Your Tools")
+                Text(L("Choose Your Tools"))
                     .font(.headline)
                 Spacer()
-                Button("Show All") {
+                Button(L("Show All")) {
                     moduleSettings.enableAll()
                 }
                 .buttonStyle(.borderless)
@@ -22,12 +22,12 @@ struct ModuleSettingsSheet: View {
 
             Form {
                 Section {
-                    Text("Keep at least one tool selected. Hidden tools stop checking for updates in the background.")
+                    Text(L("Keep at least one tool selected. Hidden tools stop checking for updates in the background."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Display & Scanning") {
+                Section(L("Display & Scanning")) {
                     ForEach(AppModule.allCases) { module in
                         Toggle(isOn: binding(for: module)) {
                             VStack(alignment: .leading, spacing: 2) {
@@ -46,16 +46,16 @@ struct ModuleSettingsSheet: View {
 
             HStack {
                 Spacer()
-                Button("Done") { dismiss() }
+                Button(L("Done")) { dismiss() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding()
         }
         .frame(width: 420, height: 420)
-        .alert("Keep At Least One Module", isPresented: $showMinimumModuleAlert) {
-            Button("OK", role: .cancel) {}
+        .alert(L("Keep At Least One Module"), isPresented: $showMinimumModuleAlert) {
+            Button(L("OK"), role: .cancel) {}
         } message: {
-            Text("Select at least one tool to continue.")
+            Text(L("Select at least one tool to continue."))
         }
     }
 

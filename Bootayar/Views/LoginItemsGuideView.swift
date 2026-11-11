@@ -17,10 +17,10 @@ struct LoginItemsGuideView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("How Login Items Differ from Launchd")
+                    Text(L("How Login Items Differ from Launchd"))
                         .font(.title2)
                         .fontWeight(.bold)
-                    Text("Learn how macOS Login Items work below, then manage them in System Settings.")
+                    Text(L("Learn how macOS Login Items work below, then manage them in System Settings."))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -40,7 +40,7 @@ struct LoginItemsGuideView: View {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "info.circle.fill")
                         .foregroundStyle(BootayarTheme.indigo)
-                    Text("Many Login Items correspond to a launchd plist. If they appear under Launch Agents or LaunchDaemons, manage them right here in Bootayar.")
+                    Text(L("Many Login Items correspond to a launchd plist. If they appear under Launch Agents or LaunchDaemons, manage them right here in Bootayar."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -58,7 +58,7 @@ struct LoginItemsGuideView: View {
                 Button {
                     LoginItemsSettings.openSystemSettings()
                 } label: {
-                    Label("Open Login Items Settings", systemImage: "arrow.up.forward.app")
+                    Label(L("Open Login Items Settings"), systemImage: "arrow.up.forward.app")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -67,14 +67,14 @@ struct LoginItemsGuideView: View {
             .frame(maxWidth: 580, alignment: .leading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .navigationTitle("Login Items")
+        .navigationTitle(L("Login Items"))
     }
 }
 
 private struct GuideCard: View {
     let icon: String
-    let title: LocalizedStringKey
-    let description: LocalizedStringKey
+    let title: String
+    let description: String
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {

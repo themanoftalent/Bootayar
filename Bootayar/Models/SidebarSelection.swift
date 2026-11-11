@@ -24,15 +24,15 @@ enum AgentListFilter: Hashable {
     case homebrew
     case scope(LaunchItem.Scope)
 
-    var chipTitle: LocalizedStringKey {
+    var chipTitle: String {
         switch self {
-        case .all: return "All"
-        case .homebrew: return "Homebrew"
+        case .all: return L("All")
+        case .homebrew: return L("Homebrew")
         case .scope(let scope):
             switch scope {
-            case .userAgent: return "User"
-            case .systemAgent: return "Global"
-            case .systemDaemon: return "Daemon"
+            case .userAgent: return L("User")
+            case .systemAgent: return L("Global")
+            case .systemDaemon: return L("Daemon")
             }
         }
     }

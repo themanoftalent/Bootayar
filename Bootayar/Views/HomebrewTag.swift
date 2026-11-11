@@ -5,7 +5,7 @@ struct HomebrewTag: View {
         HStack(spacing: 3) {
             Image(systemName: "mug.fill")
                 .font(.system(size: 8.5, weight: .bold))
-            Text("Brew")
+            Text(L("Brew"))
                 .font(.system(size: 10, weight: .semibold, design: .rounded))
         }
         .padding(.horizontal, 6.5)

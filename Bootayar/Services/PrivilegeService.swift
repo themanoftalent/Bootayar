@@ -6,8 +6,8 @@ enum PrivilegeError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .cancelled: return String(localized: "Operation cancelled")
-        case .executionFailed(let msg): return String(localized: "Execution failed: \(msg)")
+        case .cancelled: return L("Operation cancelled")
+        case .executionFailed(let msg): return L("Execution failed: \(msg)")
         }
     }
 }

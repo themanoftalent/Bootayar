@@ -12,10 +12,10 @@ struct UpdateAvailableSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Update Available")
+                Text(L("Update Available"))
                     .font(.title2)
                     .fontWeight(.bold)
-                Text(String(localized: "Bootayar \(release.version.displayString) is now available"))
+                Text(L("Bootayar \(release.version.displayString) is now available"))
                     .foregroundStyle(.secondary)
             }
 
@@ -27,18 +27,18 @@ struct UpdateAvailableSheet: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Direct Download")
+                Text(L("Direct Download"))
                     .font(.headline)
                 Button {
                     NSWorkspace.shared.open(release.downloadURL)
                 } label: {
-                    Label("Download Bootayar.dmg", systemImage: "arrow.down.circle")
+                    Label(L("Download Bootayar.dmg"), systemImage: "arrow.down.circle")
                 }
                 .buttonStyle(.borderedProminent)
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Upgrade via Homebrew")
+                Text(L("Upgrade via Homebrew"))
                     .font(.headline)
                 Text(GitHubRelease.homebrewUpgradeCommand)
                     .font(.system(.caption, design: .monospaced))
@@ -56,17 +56,17 @@ struct UpdateAvailableSheet: View {
             }
 
             Link(destination: release.releasePageURL) {
-                Label("View Release on GitHub", systemImage: "link")
+                Label(L("View Release on GitHub"), systemImage: "link")
                     .font(.subheadline)
             }
 
             HStack {
-                Button("Skip This Version", role: .destructive) {
+                Button(L("Skip This Version"), role: .destructive) {
                     onSkip()
                 }
                 .buttonStyle(.borderless)
                 Spacer()
-                Button("Later") {
+                Button(L("Later")) {
                     onDismiss()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -76,7 +76,7 @@ struct UpdateAvailableSheet: View {
         .frame(width: 420)
     }
 
-    private func versionColumn(_ title: LocalizedStringKey, _ value: String) -> some View {
+    private func versionColumn(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)

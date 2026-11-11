@@ -27,7 +27,7 @@ struct ServiceRowView: View {
                     color: statusColor,
                     isPulsing: isKilling
                 )
-                .help("PID \(service.pid)")
+                .help(L("PID \(service.pid)"))
 
                 if service.isHomebrewManaged {
                     HomebrewTag()
@@ -70,7 +70,7 @@ struct ServiceRowView: View {
                         }
                     }
                     if service.identityKind == .hostMechanism {
-                        detailRow("Type", String(localized: "Host Mechanism"))
+                        detailRow("Type", L("Host Mechanism"))
                     }
                     if let docker = service.dockerInfo {
                         detailRow("Container", docker.containerLabel)
@@ -94,7 +94,7 @@ struct ServiceRowView: View {
                     HStack(spacing: 8) {
                         if service.runtimeGroup == .instance && service.killAllowed,
                            let draft = LaunchAgentDraft.from(service: service) {
-                            Button("Create Launch Agent…") {
+                            Button(L("Create Launch Agent…")) {
                                 onCreateLaunchAgent(draft)
                             }
                             .buttonStyle(.bordered)
@@ -109,7 +109,7 @@ struct ServiceRowView: View {
                         .disabled(copyConfirmed)
 
                         if let url = service.url {
-                            Button("Open") {
+                            Button(L("Open")) {
                                 NSWorkspace.shared.open(url)
                             }
                             .buttonStyle(.bordered)
@@ -160,19 +160,19 @@ struct ServiceRowView: View {
     private var renameSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text("Display Name")
+                Text(L("Display Name"))
                     .foregroundStyle(.secondary)
                     .frame(width: 58, alignment: .leading)
                 TextField("Display Name", text: $renameText)
                     .textFieldStyle(.roundedBorder)
                     .font(.caption)
                     .onSubmit { saveRename() }
-                Button("Save") { saveRename() }
+                Button(L("Save")) { saveRename() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(renameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 if store.hasCustomName(for: service) {
-                    Button("Reset to Auto") {
+                    Button(L("Reset to Auto")) {
                         store.clearCustomName(for: service)
                         renameText = service.autoDisplayName
                         isEditingName = false
@@ -182,7 +182,7 @@ struct ServiceRowView: View {
                 }
             }
             if store.hasCustomName(for: service) {
-                Text(String(localized: "Custom name set (auto-detected: \(service.autoDisplayName))"))
+                Text(L("Custom name set (auto-detected: \(service.autoDisplayName))"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -211,7 +211,7 @@ struct ServiceRowView: View {
                 .layoutPriority(0)
 
             if let subtitle = service.subtitle {
-                Text("·")
+                Text(L("·"))
                     .foregroundStyle(.secondary)
                 Text(subtitle)
                     .font(.system(size: 12))
@@ -238,25 +238,25 @@ struct ServiceRowView: View {
         }
     }
 
-    private var killButtonTitle: LocalizedStringKey {
+    private var killButtonTitle: String {
         service.usesDockerStop ? "Stop Container…" : "Terminate Process…"
     }
 
-    private var killDialogTitle: LocalizedStringKey {
+    private var killDialogTitle: String {
         service.usesDockerStop ? "Stop Container?" : "Terminate Service?"
     }
 
-    private var killConfirmActionTitle: LocalizedStringKey {
+    private var killConfirmActionTitle: String {
         service.usesDockerStop ? "Stop Container" : "Terminate Process"
     }
 
     private var killConfirmMessage: String {
         var lines = [service.displayName, service.addressLabel]
         if let docker = service.dockerInfo {
-            lines.append(String(localized: "Container: \(docker.containerLabel)"))
-            lines.append(String(localized: "Image: \(docker.image)"))
+            lines.append(L("Container: \(docker.containerLabel)"))
+            lines.append(L("Image: \(docker.image)"))
         } else {
-            lines.append(String(localized: "PID \(service.pid)"))
+            lines.append(L("PID \(service.pid)"))
         }
         if let dir = service.workingDirectory {
             lines.append(FilePathNormalizer.display(dir))
@@ -267,7 +267,7 @@ struct ServiceRowView: View {
     @ViewBuilder
     private var primaryActionButton: some View {
         if let url = service.url {
-            Button("Open") {
+            Button(L("Open")) {
                 NSWorkspace.shared.open(url)
             }
             .buttonStyle(.borderedProminent)
@@ -282,7 +282,7 @@ struct ServiceRowView: View {
         }
     }
 
-    private func detailRow(_ label: LocalizedStringKey, _ value: String) -> some View {
+    private func detailRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
                 .foregroundStyle(.secondary)

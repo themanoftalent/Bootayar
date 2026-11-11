@@ -5,7 +5,7 @@ enum DockerCLIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notFound: return String(localized: "Docker executable not found")
+        case .notFound: return L("Docker executable not found")
         }
     }
 }

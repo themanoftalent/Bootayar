@@ -8,14 +8,14 @@ enum PendingOperation: Equatable {
     case enabling
     case restarting
 
-    var localizedLabel: LocalizedStringKey {
+    var localizedLabel: String {
         switch self {
-        case .starting:  return "Starting…"
-        case .stopping:  return "Stopping…"
-        case .loading:   return "Loading…"
-        case .unloading: return "Unloading…"
-        case .enabling:  return "Enabling…"
-        case .restarting: return "Restarting…"
+        case .starting:  return L("Starting…")
+        case .stopping:  return L("Stopping…")
+        case .loading:   return L("Loading…")
+        case .unloading: return L("Unloading…")
+        case .enabling:  return L("Enabling…")
+        case .restarting: return L("Restarting…")
         }
     }
 }

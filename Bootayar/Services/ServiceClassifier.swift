@@ -103,7 +103,7 @@ struct ServiceClassifier {
     ) -> Service {
         let identityKey = ServiceNameStore.identityKey(port: process.port, executable: process.executable)
         let mechanismHit = hostMechanism.resolve(process: process)
-        let autoDisplayName = mechanismHit?.displayName ?? String(localized: "Docker Port Forward")
+        let autoDisplayName = mechanismHit?.displayName ?? L("Docker Port Forward")
         let customName = nameStore.customName(for: identityKey)
         let health: ServiceHealth = ProcessDiscoveryService.isProcessAlive(pid: process.pid)
             ? .healthy : .down
@@ -126,7 +126,7 @@ struct ServiceClassifier {
             processDirectory: context.processDirectory,
             url: nil,
             dockerInfo: nil,
-            stopMethod: .blocked(reason: String(localized: "Cannot locate Docker container; terminating docker-proxy directly would break Docker networking. Use docker stop or Docker Desktop."))
+            stopMethod: .blocked(reason: L("Cannot locate Docker container; terminating docker-proxy directly would break Docker networking. Use docker stop or Docker Desktop."))
         )
     }
 

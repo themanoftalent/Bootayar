@@ -11,7 +11,7 @@ extension PlistValidationError: LocalizedError {
         case .invalidFormat(let message):
             return message
         case .missingLabel:
-            return String(localized: "Plist must contain a Label key")
+            return L("Plist must contain a Label key")
         }
     }
 }
@@ -47,7 +47,7 @@ struct PlistService {
 
     func formIncompatibilityReason(for dict: [String: Any]) -> String? {
         if let keepAlive = dict["KeepAlive"], !(keepAlive is Bool) {
-            return String(localized: "KeepAlive uses a format not supported by the form editor. Please edit in XML mode.")
+            return L("KeepAlive uses a format not supported by the form editor. Please edit in XML mode.")
         }
         return nil
     }

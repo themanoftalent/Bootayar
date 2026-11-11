@@ -51,7 +51,7 @@ struct CronListView: View {
                 }
             }
         }
-        .navigationTitle("Crontab")
+        .navigationTitle(L("Crontab"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -64,12 +64,12 @@ struct CronListView: View {
                         }
                     }
                 } label: {
-                    Label("New", systemImage: "plus")
+                    Label(L("New"), systemImage: "plus")
                 }
             }
             ToolbarItem {
                 Button { store.refresh() } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label(L("Refresh"), systemImage: "arrow.clockwise")
                 }
                 .disabled(store.isRefreshing)
             }
@@ -108,7 +108,7 @@ struct CronListView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
-                    Text("\(count)")
+                    Text(L("\(count)"))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(BootayarTheme.indigo)
                         .padding(.horizontal, 7)
@@ -175,11 +175,11 @@ struct CronListView: View {
         }
     }
 
-    private var emptyTitle: LocalizedStringKey {
+    private var emptyTitle: String {
         searchText.isEmpty ? "No Cron Jobs" : "No Matching Results"
     }
 
-    private var emptyDescription: LocalizedStringKey {
+    private var emptyDescription: String {
         searchText.isEmpty
             ? "User crontab and /etc/crontab are empty. Click New to add a scheduled job."
             : "Try a different search query"

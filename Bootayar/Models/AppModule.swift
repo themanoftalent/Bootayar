@@ -18,39 +18,39 @@ enum AppModule: String, CaseIterable, Identifiable, Codable, Hashable {
         }
     }
 
-    var title: LocalizedStringKey {
+    var title: String {
         switch self {
-        case .agents: return "Startup Tasks"
-        case .crontab: return "Scheduled Tasks"
-        case .loginItems: return "Login Items"
-        case .services: return "Services"
+        case .agents: return L("Startup Tasks")
+        case .crontab: return L("Scheduled Tasks")
+        case .loginItems: return L("Login Items")
+        case .services: return L("Services")
         }
     }
 
-    var subtitle: LocalizedStringKey {
+    var subtitle: String {
         switch self {
-        case .agents: return "User, system, and Homebrew tasks"
-        case .crontab: return "Personal and system schedules"
-        case .loginItems: return "Manage apps that open at login"
-        case .services: return "Local ports and services"
+        case .agents: return L("User, system, and Homebrew tasks")
+        case .crontab: return L("Personal and system schedules")
+        case .loginItems: return L("Manage apps that open at login")
+        case .services: return L("Local ports and services")
         }
     }
 
     var systemImage: String {
         switch self {
-        case .agents: return "list.bullet.rectangle"
-        case .crontab: return "clock"
-        case .loginItems: return "key.fill"
-        case .services: return "bolt.fill"
+        case .agents: return L("list.bullet.rectangle")
+        case .crontab: return L("clock")
+        case .loginItems: return L("key.fill")
+        case .services: return L("bolt.fill")
         }
     }
 
-    var settingsDescription: LocalizedStringKey {
+    var settingsDescription: String {
         switch self {
-        case .agents: return "Find background startup tasks and Homebrew services"
-        case .crontab: return "Find personal and system scheduled tasks"
-        case .loginItems: return "Open the login items guide and System Settings"
-        case .services: return "Find local network ports and running services"
+        case .agents: return L("Find background startup tasks and Homebrew services")
+        case .crontab: return L("Find personal and system scheduled tasks")
+        case .loginItems: return L("Open the login items guide and System Settings")
+        case .services: return L("Find local network ports and running services")
         }
     }
 }

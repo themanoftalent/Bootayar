@@ -21,12 +21,12 @@ struct OnboardingView: View {
                             .foregroundStyle(.white)
                     }
                 }
-                Text("Welcome to Bootayar")
+                Text(L("Welcome to Bootayar"))
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("macOS Startup & Automation Manager")
+                Text(L("macOS Startup & Automation Manager"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(BootayarTheme.indigo)
-                Text("Manage startup apps, background services, and scheduled tasks.")
+                Text(L("Manage startup apps, background services, and scheduled tasks."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -59,11 +59,11 @@ struct OnboardingView: View {
                     .foregroundStyle(BootayarTheme.amber)
                     .font(.system(size: 13, weight: .semibold))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Before You Delete a Task")
+                    Text(L("Before You Delete a Task"))
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(BootayarTheme.amber)
-                    Text("Deleting a task configuration does not delete its app. Changes to system tasks may require an administrator password.")
+                    Text(L("Deleting a task configuration does not delete its app. Changes to system tasks may require an administrator password."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -77,7 +77,7 @@ struct OnboardingView: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            Button("Get Started") {
+            Button(L("Get Started")) {
                 isPresented = false
             }
             .buttonStyle(.borderedProminent)
@@ -92,8 +92,8 @@ struct OnboardingView: View {
 
 private struct FeatureCard: View {
     let icon: String
-    let title: LocalizedStringKey
-    let description: LocalizedStringKey
+    let title: String
+    let description: String
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {

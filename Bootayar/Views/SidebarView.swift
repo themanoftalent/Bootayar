@@ -9,7 +9,7 @@ struct SidebarView: View {
     @ObservedObject var serviceStore: ServiceStore
     @Binding var showModuleSettings: Bool
     var onHelpTapped: () -> Void
-    @AppStorage("appLanguage") private var appLanguage: String = "en"
+    @ObservedObject private var lang = LanguageManager.shared
 
     private var agentCount: Int {
         store.items.count + store.invalidItems.count
@@ -51,7 +51,7 @@ struct SidebarView: View {
                         )
                     }
                 } header: {
-                    Text("YOUR TOOLS")
+                    Text(L("YOUR TOOLS"))
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(BootayarTheme.softViolet)
                         .tracking(0.8)
@@ -71,9 +71,9 @@ struct SidebarView: View {
                                     .foregroundStyle(BootayarTheme.electricViolet)
                             }
                             VStack(alignment: .leading, spacing: 1) {
-                                Text("User Guide")
+                                Text(L("User Guide"))
                                     .font(.system(size: 13, weight: .medium))
-                                Text("github.com/themanoftalent/Bootayar")
+                                Text(L("github.com/themanoftalent/Bootayar"))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -90,20 +90,20 @@ struct SidebarView: View {
                     SidebarRowButton(
                         selection: $selection,
                         tag: .about,
-                        title: Text("About Bootayar"),
-                        subtitle: Text("Developer & support"),
+                        title: Text(L("About Bootayar")),
+                        subtitle: Text(L("Developer & support")),
                         icon: "info.circle.fill",
                         badge: 0
                     )
                 } header: {
-                    Text("HELP")
+                    Text(L("HELP"))
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(.secondary)
                         .tracking(0.8)
                 }
             }
             .listStyle(.sidebar)
-            .navigationTitle("Bootayar")
+            .navigationTitle(L("Bootayar"))
 
             Divider()
                 .opacity(0.6)
@@ -116,7 +116,7 @@ struct SidebarView: View {
                         Image(systemName: "slider.horizontal.3")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(BootayarTheme.indigo)
-                        Text("Choose Tools")
+                        Text(L("Choose Tools"))
                             .font(.caption.weight(.medium))
                             .foregroundStyle(.secondary)
                     }
@@ -128,19 +128,17 @@ struct SidebarView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .help("Choose which tools appear in the sidebar")
+                .help(L("Choose which tools appear in the sidebar"))
 
                 Spacer()
 
                 Button {
-                    let next = appLanguage == "en" ? "tr" : "en"
-                    appLanguage = next
-                    UserDefaults.standard.set([next], forKey: "AppleLanguages")
+                    lang.toggleLanguage()
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "globe")
                             .font(.system(size: 10.5, weight: .semibold))
-                        Text(appLanguage.uppercased())
+                        Text(lang.currentLanguage.uppercased())
                             .font(.system(size: 10.5, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(BootayarTheme.indigo)
@@ -152,7 +150,7 @@ struct SidebarView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .help(appLanguage == "en" ? "Türkçe'ye geç (Switch to Turkish)" : "Switch to English (İngilizce'ye geç)")
+                .help(lang.currentLanguage == "en" ? "Türkçe'ye geç (Switch to Turkish)" : "Switch to English (İngilizce'ye geç)")
 
                 Button {
                     selection = .about
@@ -168,7 +166,7 @@ struct SidebarView: View {
                         )
                 }
                 .buttonStyle(.plain)
-                .help("About Bootayar")
+                .help(L("About Bootayar"))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -195,9 +193,9 @@ struct SidebarView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Bootayar")
+                    Text(L("Bootayar"))
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                    Text("macOS Startup & Automation Manager")
+                    Text(L("macOS Startup & Automation Manager"))
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -228,12 +226,12 @@ struct SidebarView: View {
         }
     }
 
-    private func statusPill(dotColor: Color, label: LocalizedStringKey, value: String) -> some View {
+    private func statusPill(dotColor: Color, label: String, value: String) -> some View {
         HStack(spacing: 4) {
             Circle()
                 .fill(dotColor)
                 .frame(width: 6, height: 6)
-            Text(label)
+            Text(L(label))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.secondary)
             Text(value)

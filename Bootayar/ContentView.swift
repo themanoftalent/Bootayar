@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var homebrewStore = HomebrewServiceStore()
     @StateObject private var serviceStore = ServiceStore()
     @StateObject private var updateChecker = UpdateChecker()
+    @ObservedObject private var lang = LanguageManager.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: SidebarSelection? = .agents
     @State private var showingNewAgent = false
@@ -56,6 +57,7 @@ struct ContentView: View {
         } detail: {
             detailView
         }
+        .id(lang.currentLanguage)
         .modifier(ConditionalSearchable(
             isEnabled: (isAgentsView || isCrontabView) && !isLoginItemsGuide && !isServicesView,
             text: $searchText,
@@ -90,6 +92,11 @@ struct ContentView: View {
             ensureValidSelection()
             syncModuleScanning()
         }
+        .onChange(of: lang.currentLanguage) { _, _ in
+            store.refresh()
+            crontabStore.refresh()
+            serviceStore.refreshNow()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .brewServicesDidChange)) { _ in
             if isAgentsView, moduleSettings.isEnabled(.agents) {
                 store.refresh()
@@ -98,17 +105,16 @@ struct ContentView: View {
         .sheet(isPresented: $showModuleSettings) {
             ModuleSettingsSheet(moduleSettings: moduleSettings)
         }
-        .confirmationDialog(
-            "Open the User Guide?",
+        .confirmationDialog(L("Open the User Guide?"),
             isPresented: $showHelpConfirm,
             titleVisibility: .visible
         ) {
-            Button("Open Guide") {
+            Button(L("Open Guide")) {
                 NSWorkspace.shared.open(AppLinks.helpURL)
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("Cancel"), role: .cancel) {}
         } message: {
-            Text("The user guide will open in your web browser.")
+            Text(L("The user guide will open in your web browser."))
         }
         .sheet(isPresented: $showOnboarding) {
             OnboardingView(isPresented: $showOnboarding)
@@ -158,11 +164,11 @@ struct ContentView: View {
                 errorMessage: $errorMessage
             )
         }
-        .alert("Error", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("OK") { errorMessage = nil }
+            Button(L("OK")) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
@@ -188,10 +194,9 @@ struct ContentView: View {
     @ViewBuilder
     private var detailView: some View {
         if !isCurrentModuleEnabled {
-            ContentUnavailableView(
-                "Tool Hidden",
+            ContentUnavailableView(L("Tool Hidden"),
                 systemImage: "gearshape",
-                description: Text("Select Choose Tools at the bottom left to show this tool.")
+                description: Text(L("Select Choose Tools at the bottom left to show this tool."))
             )
         } else {
             switch selection {
@@ -232,7 +237,7 @@ struct ContentView: View {
         return moduleSettings.isEnabled(module)
     }
 
-    private var searchPrompt: LocalizedStringKey {
+    private var searchPrompt: String {
         if isCrontabView {
             return "Search command or schedule"
         }
@@ -300,7 +305,7 @@ struct ContentView: View {
 private struct ConditionalSearchable: ViewModifier {
     let isEnabled: Bool
     @Binding var text: String
-    let prompt: LocalizedStringKey
+    let prompt: String
 
     func body(content: Content) -> some View {
         if isEnabled {

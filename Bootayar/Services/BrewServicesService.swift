@@ -129,7 +129,7 @@ enum BrewServicesError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .brewNotFound:
-            return String(localized: "Homebrew not found. Please install Homebrew or verify brew is in PATH.")
+            return L("Homebrew not found. Please install Homebrew or verify brew is in PATH.")
         }
     }
 }

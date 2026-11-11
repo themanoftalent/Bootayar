@@ -45,7 +45,7 @@ struct ServicesListView: View {
                 }
             }
         }
-        .navigationTitle("Services")
+        .navigationTitle(L("Services"))
         .searchable(text: $searchText, prompt: "Search service, port, or project…")
         .toolbar {
             if store.lastScanError != nil {
@@ -56,17 +56,17 @@ struct ServicesListView: View {
                 }
             }
             ToolbarItem {
-                Toggle("Show All", isOn: $store.showAll)
+                Toggle(L("Show All"), isOn: $store.showAll)
             }
             ToolbarItem {
                 Button { store.refreshNow() } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label(L("Refresh"), systemImage: "arrow.clockwise")
                 }
             }
         }
     }
 
-    private var emptyStateTitle: LocalizedStringKey {
+    private var emptyStateTitle: String {
         if store.lastScanError != nil { return "Scan Failed" }
         if !store.showAll { return "No Dev Services Found" }
         return "No Services Found"
@@ -75,9 +75,9 @@ struct ServicesListView: View {
     private var emptyStateDescription: String {
         if let error = store.lastScanError { return error }
         if !store.showAll {
-            return String(localized: "Start a dev server or enable Show All")
+            return L("Start a dev server or enable Show All")
         }
-        return String(localized: "No listening TCP services found")
+        return L("No listening TCP services found")
     }
 
     private func serviceGroupSection(group: ServiceRuntimeGroup, services: [Service]) -> some View {
@@ -104,7 +104,7 @@ struct ServicesListView: View {
                     }
                     Text(group.title)
                         .font(.system(size: 13.5, weight: .semibold))
-                    Text("\(services.count)")
+                    Text(L("\(services.count)"))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(BootayarTheme.electricViolet)
                         .padding(.horizontal, 7)

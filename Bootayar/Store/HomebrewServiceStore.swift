@@ -62,21 +62,21 @@ final class HomebrewServiceStore: ObservableObject {
     }
 
     func start(_ item: HomebrewService, onError: @escaping (String) -> Void = { _ in }) {
-        runPending(item, .starting, operationName: String(localized: "Start"), onError: onError) {
+        runPending(item, .starting, operationName: L("Start"), onError: onError) {
             try self.service.start(item.name, scope: item.scope)
             self.refreshAfterMutation()
         }
     }
 
     func stop(_ item: HomebrewService, onError: @escaping (String) -> Void = { _ in }) {
-        runPending(item, .stopping, operationName: String(localized: "Stop"), onError: onError) {
+        runPending(item, .stopping, operationName: L("Stop"), onError: onError) {
             try self.service.stop(item.name, scope: item.scope)
             self.refreshAfterMutation()
         }
     }
 
     func restart(_ item: HomebrewService, onError: @escaping (String) -> Void = { _ in }) {
-        runPending(item, .restarting, operationName: String(localized: "Restart"), onError: onError) {
+        runPending(item, .restarting, operationName: L("Restart"), onError: onError) {
             try self.service.restart(item.name, scope: item.scope)
             self.refreshAfterMutation()
         }

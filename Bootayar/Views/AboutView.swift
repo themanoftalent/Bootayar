@@ -28,17 +28,17 @@ struct AboutView: View {
                     }
 
                     VStack(spacing: 3) {
-                        Text("Bootayar")
+                        Text(L("Bootayar"))
                             .font(.system(size: 22, weight: .bold))
-                        Text("macOS Startup & Automation Manager")
+                        Text(L("macOS Startup & Automation Manager"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.primary.opacity(0.85))
-                        Text("Version \(appVersion)")
+                        Text(L("Version \(appVersion)"))
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
 
-                    Text("Manage startup apps, background services, and scheduled tasks.")
+                    Text(L("Manage startup apps, background services, and scheduled tasks."))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -56,10 +56,10 @@ struct AboutView: View {
                         if updateChecker.isChecking {
                             HStack(spacing: 6) {
                                 ProgressView().controlSize(.small)
-                                Text("Checking…")
+                                Text(L("Checking…"))
                             }
                         } else {
-                            Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
+                            Label(L("Check for Updates…"), systemImage: "arrow.triangle.2.circlepath")
                         }
                     }
                     .buttonStyle(.bordered)
@@ -79,7 +79,7 @@ struct AboutView: View {
                     Spacer()
 
                     if !isInlinePage {
-                        Button("Close") { dismiss() }
+                        Button(L("Close")) { dismiss() }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
                     }
@@ -91,7 +91,7 @@ struct AboutView: View {
             .frame(maxWidth: .infinity)
         }
         .frame(minWidth: isInlinePage ? nil : 460, minHeight: isInlinePage ? nil : 430)
-        .navigationTitle("About Bootayar")
+        .navigationTitle(L("About Bootayar"))
     }
 
     private var appVersion: String {
@@ -107,38 +107,38 @@ private struct OpenSourceCard: View {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .fill(Color(red: 0.0, green: 0.48, blue: 1.0))
                         .frame(width: 24, height: 24)
-                    Text("{}")
+                    Text(L("{}"))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                 }
-                Text("Open Source | Free to Fork & Use")
+                Text(L("Open Source | Free to Fork & Use"))
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.primary)
             }
 
-            Text("Feel free to fork, modify, use, and contribute!")
+            Text(L("Feel free to fork, modify, use, and contribute!"))
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text("Developed by:")
+                    Text(L("Developed by:"))
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
-                    Text("SoftAI Yazılım")
+                    Text(L("SoftAI Yazılım"))
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.primary)
                 }
                 HStack(spacing: 6) {
-                    Text("Developer:")
+                    Text(L("Developer:"))
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
-                    Text("Assoc. Prof. Dr. Mehmet Akif Cifci")
+                    Text(L("Assoc. Prof. Dr. Mehmet Akif Cifci"))
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.primary)
                 }
                 HStack(spacing: 6) {
-                    Text("GitHub:")
+                    Text(L("GitHub:"))
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                     Link("@themanoftalent", destination: URL(string: "https://github.com/themanoftalent")!)
@@ -165,14 +165,14 @@ private struct FollowSupportCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text("❤️")
+                Text(L("❤️"))
                     .font(.system(size: 16))
-                Text("Follow & Support")
+                Text(L("Follow & Support"))
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.primary)
             }
 
-            Text("If you find this project useful, star the repository, follow me, or buy me a coffee! Your support helps keep future projects free and open-source.")
+            Text(L("If you find this project useful, star the repository, follow me, or buy me a coffee! Your support helps keep future projects free and open-source."))
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -180,10 +180,10 @@ private struct FollowSupportCard: View {
             HStack(spacing: 10) {
                 Link(destination: URL(string: "https://github.com/themanoftalent/Bootayar")!) {
                     HStack(spacing: 6) {
-                        Text("</>")
+                        Text(L("</>"))
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundColor(Color(red: 0.0, green: 0.48, blue: 1.0))
-                        Text("GitHub")
+                        Text(L("GitHub"))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.primary)
                     }
@@ -200,9 +200,9 @@ private struct FollowSupportCard: View {
 
                 Link(destination: URL(string: "https://github.com/sponsors/themanoftalent")!) {
                     HStack(spacing: 6) {
-                        Text("❤️")
+                        Text(L("❤️"))
                             .font(.system(size: 12))
-                        Text("Sponsor Me")
+                        Text(L("Sponsor Me"))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.primary)
                     }
@@ -219,9 +219,9 @@ private struct FollowSupportCard: View {
 
                 Link(destination: URL(string: "https://buymeacoffee.com/themanoftalent")!) {
                     HStack(spacing: 6) {
-                        Text("☕")
+                        Text(L("☕"))
                             .font(.system(size: 12))
-                        Text("Buy Me a Coffee")
+                        Text(L("Buy Me a Coffee"))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.primary)
                     }

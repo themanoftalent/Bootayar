@@ -17,7 +17,7 @@ struct HostMechanismResolver {
 
         if exe == "docker-proxy" || cmd.contains("docker-proxy") {
             return .init(
-                displayName: String(localized: "Docker Port Forward"),
+                displayName: L("Docker Port Forward"),
                 category: .hostMechanism,
                 generatesURL: false,
                 identityKind: .hostMechanism
@@ -26,7 +26,7 @@ struct HostMechanismResolver {
 
         if exe == "launchd" || cmd.hasPrefix("/sbin/launchd") || cmd.hasPrefix("/usr/libexec/launchd") {
             return .init(
-                displayName: String(localized: "System Service (launchd)"),
+                displayName: L("System Service (launchd)"),
                 category: .hostMechanism,
                 generatesURL: false,
                 identityKind: .hostMechanism
@@ -35,7 +35,7 @@ struct HostMechanismResolver {
 
         if exe == "ssh", hasSSHPortForward(in: process.command) {
             return .init(
-                displayName: String(localized: "SSH Port Forward"),
+                displayName: L("SSH Port Forward"),
                 category: .hostMechanism,
                 generatesURL: false,
                 identityKind: .hostMechanism

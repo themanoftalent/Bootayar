@@ -24,8 +24,8 @@ struct LogViewerSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             Picker("", selection: $selectedTab) {
-                Text("File Logs").tag(0)
-                Text("System Logs").tag(1)
+                Text(L("File Logs")).tag(0)
+                Text(L("System Logs")).tag(1)
             }
             .pickerStyle(.segmented)
             .padding()
@@ -38,10 +38,10 @@ struct LogViewerSheet: View {
             if selectedTab == 0 { fileLogTab } else { systemLogTab }
         }
         .frame(minWidth: 620, minHeight: 420)
-        .navigationTitle(String(localized: "Logs — \(item.label)"))
+        .navigationTitle(L("Logs — \(item.label)"))
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Close") { dismiss() }
+                Button(L("Close")) { dismiss() }
             }
         }
         .onAppear { loadFileLog() }
@@ -50,10 +50,9 @@ struct LogViewerSheet: View {
     @ViewBuilder
     private var fileLogTab: some View {
         if item.standardOutPath == nil && item.standardErrorPath == nil {
-            ContentUnavailableView(
-                "No Log File Configured",
+            ContentUnavailableView(L("No Log File Configured"),
                 systemImage: "doc.text.slash",
-                description: Text("Set StandardOutPath / StandardErrorPath in Edit Agent to enable file logging.")
+                description: Text(L("Set StandardOutPath / StandardErrorPath in Edit Agent to enable file logging."))
             )
         } else {
             VStack(spacing: 0) {
@@ -61,7 +60,7 @@ struct LogViewerSheet: View {
                 Divider()
                 HStack {
                     Spacer()
-                    Button("Clear Log") { clearFileLog() }.padding(8)
+                    Button(L("Clear Log")) { clearFileLog() }.padding(8)
                 }
             }
         }
@@ -80,14 +79,14 @@ struct LogViewerSheet: View {
             }
             .padding(.horizontal).padding(.vertical, 6)
             if systemLogTruncated {
-                Text(String(localized: "Showing last \(Self.maxSystemLines) lines (last \(Self.systemLogWindow))"))
+                Text(L("Showing last \(Self.maxSystemLines) lines (last \(Self.systemLogWindow))"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
             }
             Divider()
-            logLinesView(filteredSystemLines, emptyMessage: systemLogLoaded ? String(localized: "(No logs)") : String(localized: "Click Refresh to load system logs"))
+            logLinesView(filteredSystemLines, emptyMessage: systemLogLoaded ? L("(No logs)") : L("Click Refresh to load system logs"))
         }
         .onAppear {
             if !systemLogLoaded { loadSystemLog() }
@@ -133,7 +132,7 @@ struct LogViewerSheet: View {
         let text = String(decoding: slice, as: UTF8.self)
         var result = text.components(separatedBy: "\n")
         if data.count > Self.maxFileBytes {
-            result.insert(String(localized: "… (showing last \(Self.maxFileBytes / 1024) KB of file)"), at: 0)
+            result.insert(L("… (showing last \(Self.maxFileBytes / 1024) KB of file)"), at: 0)
         }
         return result
     }
@@ -168,7 +167,7 @@ struct LogViewerSheet: View {
                 }
                 process.waitUntilExit()
             } catch {
-                lines = [String(localized: "Failed to read system log: \(error.localizedDescription)")]
+                lines = [L("Failed to read system log: \(error.localizedDescription)")]
             }
             if truncated {
                 lines = Array(lines.prefix(Self.maxSystemLines))

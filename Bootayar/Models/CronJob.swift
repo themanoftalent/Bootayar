@@ -79,20 +79,20 @@ enum CronScheduleDescriber {
         let m = minute, h = hour, dom = dayOfMonth, mon = month, dow = weekday
 
         if m == "*" && h == "*" && dom == "*" && mon == "*" && dow == "*" {
-            return String(localized: "Every minute")
+            return L("Every minute")
         }
         if m == "0" && h == "*" && dom == "*" && mon == "*" && dow == "*" {
-            return String(localized: "Every hour on the hour")
+            return L("Every hour on the hour")
         }
         if dom == "*" && mon == "*" && dow == "*" && h != "*" && m != "*" {
-            return String(localized: "Daily at \(h):\(pad(m))")
+            return L("Daily at \(h):\(pad(m))")
         }
         if dom == "*" && mon == "*" && h != "*" && m != "*" && dow != "*" {
             let day = weekdayName(dow) ?? "Weekday \(dow)"
-            return String(localized: "Every \(day) at \(h):\(pad(m))")
+            return L("Every \(day) at \(h):\(pad(m))")
         }
         if dow == "*" && mon == "*" && h != "*" && m != "*" && dom != "*" {
-            return String(localized: "Monthly on day \(dom) at \(h):\(pad(m))")
+            return L("Monthly on day \(dom) at \(h):\(pad(m))")
         }
         return "\(m) \(h) \(dom) \(mon) \(dow)"
     }
@@ -103,13 +103,13 @@ enum CronScheduleDescriber {
 
     private static func weekdayName(_ value: String) -> String? {
         switch value {
-        case "0", "7": return String(localized: "Sun")
-        case "1": return String(localized: "Mon")
-        case "2": return String(localized: "Tue")
-        case "3": return String(localized: "Wed")
-        case "4": return String(localized: "Thu")
-        case "5": return String(localized: "Fri")
-        case "6": return String(localized: "Sat")
+        case "0", "7": return L("Sun")
+        case "1": return L("Mon")
+        case "2": return L("Tue")
+        case "3": return L("Wed")
+        case "4": return L("Thu")
+        case "5": return L("Fri")
+        case "6": return L("Sat")
         default: return nil
         }
     }

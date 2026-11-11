@@ -70,9 +70,9 @@ struct EditAgentSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Edit Mode", selection: $editorMode) {
-                Text("Form").tag(EditorMode.form)
-                Text("XML").tag(EditorMode.xml)
+            Picker(L("Edit Mode"), selection: $editorMode) {
+                Text(L("Form")).tag(EditorMode.form)
+                Text(L("XML")).tag(EditorMode.xml)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
@@ -107,56 +107,55 @@ struct EditAgentSheet: View {
         .navigationTitle(existingItem == nil ? "New Agent" : "Edit Agent")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button(L("Cancel")) { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { requestSave() }
+                Button(L("Save")) { requestSave() }
                     .disabled(!canSave)
             }
         }
-        .alert("Error", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("OK") { errorMessage = nil }
+            Button(L("OK")) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
         .confirmationDialog(
-            String(localized: "Saving will reload the job and may run it immediately."),
+            L("Saving will reload the job and may run it immediately."),
             isPresented: $showRunAtLoadSaveConfirm,
             titleVisibility: .visible
         ) {
-            Button("Save", role: .destructive) { saveItem() }
-            Button("Cancel", role: .cancel) {}
+            Button(L("Save"), role: .destructive) { saveItem() }
+            Button(L("Cancel"), role: .cancel) {}
         } message: {
-            Text("Saving will reload the job and may run it immediately.")
+            Text(L("Saving will reload the job and may run it immediately."))
         }
-        .alert("File Modified on Disk", isPresented: $showDiskChangedAlert) {
-            Button("Reload") { reloadSessionFromDisk() }
-            Button("Cancel", role: .cancel) {}
+        .alert(L("File Modified on Disk"), isPresented: $showDiskChangedAlert) {
+            Button(L("Reload")) { reloadSessionFromDisk() }
+            Button(L("Cancel"), role: .cancel) {}
         } message: {
-            Text("The file on disk was modified externally. Reloading will discard unsaved changes.")
+            Text(L("The file on disk was modified externally. Reloading will discard unsaved changes."))
         }
-        .confirmationDialog(
-            "Delete Group",
+        .confirmationDialog(L("Delete Group"),
             isPresented: Binding(
                 get: { pendingDeleteRuleID != nil },
                 set: { if !$0 { pendingDeleteRuleID = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Delete Group", role: .destructive) {
+            Button(L("Delete Group"), role: .destructive) {
                 if let id = pendingDeleteRuleID {
                     removeRule(id: id)
                 }
                 pendingDeleteRuleID = nil
             }
-            Button("Cancel", role: .cancel) {
+            Button(L("Cancel"), role: .cancel) {
                 pendingDeleteRuleID = nil
             }
         } message: {
-            Text("This rule maps to multiple calendar entries. Deleting it will remove the entire group.")
+            Text(L("This rule maps to multiple calendar entries. Deleting it will remove the entire group."))
         }
         .onAppear {
             if editorMode == .xml && xmlText.isEmpty {
@@ -174,12 +173,12 @@ struct EditAgentSheet: View {
 
     private var formContent: some View {
         Form {
-            Section("Basic Info") {
+            Section(L("Basic Info")) {
                 VStack(alignment: .leading, spacing: 14) {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 0) {
-                            Text("Label").font(.caption).foregroundStyle(.secondary)
-                            Text(" *").font(.caption).foregroundStyle(.red)
+                            Text(L("Label")).font(.caption).foregroundStyle(.secondary)
+                            Text(L(" *")).font(.caption).foregroundStyle(.red)
                         }
                         TextField("e.g. com.example.mytask", text: $label)
                             .textFieldStyle(.roundedBorder)
@@ -187,13 +186,13 @@ struct EditAgentSheet: View {
                     Divider()
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 0) {
-                            Text("Program Path").font(.caption).foregroundStyle(.secondary)
-                            Text(" *").font(.caption).foregroundStyle(.red)
+                            Text(L("Program Path")).font(.caption).foregroundStyle(.secondary)
+                            Text(L(" *")).font(.caption).foregroundStyle(.red)
                         }
                         HStack {
                             TextField("e.g. /usr/local/bin/mytool", text: $program)
                                 .textFieldStyle(.roundedBorder)
-                            Button("Browse…") { pickProgram() }
+                            Button(L("Browse…")) { pickProgram() }
                         }
                     }
                     Divider()
@@ -207,21 +206,21 @@ struct EditAgentSheet: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .stroke(Color(.separatorColor), lineWidth: 1)
                             )
-                        Text("One argument per line").font(.caption).foregroundStyle(.secondary)
+                        Text(L("One argument per line")).font(.caption).foregroundStyle(.secondary)
                     }
                     Divider()
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Working Directory").font(.caption).foregroundStyle(.secondary)
+                        Text(L("Working Directory")).font(.caption).foregroundStyle(.secondary)
                         TextField("WorkingDirectory (optional)", text: $workingDirectory)
                             .textFieldStyle(.roundedBorder)
                     }
                 }
             }
 
-            Section("Triggers") {
+            Section(L("Triggers")) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Trigger rules act independently; the job starts when any rule fires.")
-                    Text("Order is for display only and does not affect priority.")
+                    Text(L("Trigger rules act independently; the job starts when any rule fires."))
+                    Text(L("Order is for display only and does not affect priority."))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -232,20 +231,20 @@ struct EditAgentSheet: View {
 
                 // Use Menu so macOS does not truncate options
                 Menu {
-                    Button("Daily") { addRule(.daily(hour: 8, minute: 0)) }
-                    Button("Weekly") { addRule(.weekly(weekdays: [1], hour: 8, minute: 0)) }
-                    Button("Monthly") { addRule(.monthly(day: 1, hour: 8, minute: 0, months: nil)) }
-                    Button("Yearly") { addRule(.yearly(month: 1, day: 1, hour: 8, minute: 0)) }
-                    Button("Interval") { addRule(.interval(seconds: 60)) }
+                    Button(L("Daily")) { addRule(.daily(hour: 8, minute: 0)) }
+                    Button(L("Weekly")) { addRule(.weekly(weekdays: [1], hour: 8, minute: 0)) }
+                    Button(L("Monthly")) { addRule(.monthly(day: 1, hour: 8, minute: 0, months: nil)) }
+                    Button(L("Yearly")) { addRule(.yearly(month: 1, day: 1, hour: 8, minute: 0)) }
+                    Button(L("Interval")) { addRule(.interval(seconds: 60)) }
                         .disabled(hasIntervalRule)
-                    Button("Watch Path") { addWatchPathRule() }
+                    Button(L("Watch Path")) { addWatchPathRule() }
                 } label: {
-                    Label("Add Rule", systemImage: "plus")
+                    Label(L("Add Rule"), systemImage: "plus")
                 }
             }
 
             if !passthroughLaunchEntries.isEmpty {
-                Section("Other Trigger Conditions") {
+                Section(L("Other Trigger Conditions")) {
                     ForEach(passthroughLaunchEntries, id: \.key) { entry in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.key)
@@ -259,22 +258,22 @@ struct EditAgentSheet: View {
                 }
             }
 
-            Section("Options") {
-                Toggle("Run at Login", isOn: $runAtLoad)
-                Text("Run once when loaded at login; also runs when manually reloaded.")
+            Section(L("Options")) {
+                Toggle(L("Run at Login"), isOn: $runAtLoad)
+                Text(L("Run once when loaded at login; also runs when manually reloaded."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if runAtLoadSaveWarningVisible {
-                    Text("Saving will reload the job and may run it immediately.")
+                    Text(L("Saving will reload the job and may run it immediately."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Toggle("Keep Alive (restart automatically on crash)", isOn: $keepAlive)
+                Toggle(L("Keep Alive (restart automatically on crash)"), isOn: $keepAlive)
             }
 
-            Section("Environment Variables (optional)") {
+            Section(L("Environment Variables (optional)")) {
                 if envVarRows.isEmpty {
-                    Text("No environment variables").font(.caption).foregroundStyle(.secondary)
+                    Text(L("No environment variables")).font(.caption).foregroundStyle(.secondary)
                 }
                 ForEach($envVarRows) { $row in
                     HStack(spacing: 8) {
@@ -294,11 +293,11 @@ struct EditAgentSheet: View {
                 Button {
                     envVarRows.append(EnvVarRow())
                 } label: {
-                    Label("Add Variable", systemImage: "plus")
+                    Label(L("Add Variable"), systemImage: "plus")
                 }
             }
 
-            Section("Log Paths (optional)") {
+            Section(L("Log Paths (optional)")) {
                 TextField("StandardOutPath", text: $stdoutPath)
                 TextField("StandardErrorPath", text: $stderrPath)
             }
@@ -411,17 +410,17 @@ struct EditAgentSheet: View {
                     }
                 ))
                 .textFieldStyle(.roundedBorder)
-                Text("Watches the specified path for changes. Events may coalesce.")
+                Text(L("Watches the specified path for changes. Events may coalesce."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
             case .customCalendar(let summary, let isMalformed):
                 if isMalformed {
-                    Text("Invalid Config")
+                    Text(L("Invalid Config"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.red)
                 } else {
-                    Text("Custom Calendar")
+                    Text(L("Custom Calendar"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -429,10 +428,10 @@ struct EditAgentSheet: View {
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
-                Text("Please use XML mode to edit this rule.")
+                Text(L("Please use XML mode to edit this rule."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Button("Edit in XML") {
+                Button(L("Edit in XML")) {
                     loadXmlFromCurrentState()
                     editorMode = .xml
                 }
@@ -450,13 +449,13 @@ struct EditAgentSheet: View {
     ) -> some View {
         HStack(alignment: .bottom, spacing: 6) {
             labeledIntField("Hour", value: hour, width: 52) { onHour(min(max($0, 0), 23)) }
-            Text(":").foregroundStyle(.secondary).padding(.bottom, 6)
+            Text(L(":")).foregroundStyle(.secondary).padding(.bottom, 6)
             labeledIntField("Min", value: minute, width: 52) { onMinute(min(max($0, 0), 59)) }
         }
     }
 
     private func labeledIntField(
-        _ title: LocalizedStringKey,
+        _ title: String,
         value: Int,
         width: CGFloat,
         onChange: @escaping (Int) -> Void
@@ -482,16 +481,16 @@ struct EditAgentSheet: View {
     // launchd weekday: 0/7 = Sun, 1 = Mon ... 6 = Sat
     private func weekdayToggles(selected: Set<Int>, onChange: @escaping (Set<Int>) -> Void) -> some View {
         let labels = [
-            (1, String(localized: "Mon")),
-            (2, String(localized: "Tue")),
-            (3, String(localized: "Wed")),
-            (4, String(localized: "Thu")),
-            (5, String(localized: "Fri")),
-            (6, String(localized: "Sat")),
-            (7, String(localized: "Sun")),
+            (1, L("Mon")),
+            (2, L("Tue")),
+            (3, L("Wed")),
+            (4, L("Thu")),
+            (5, L("Fri")),
+            (6, L("Sat")),
+            (7, L("Sun")),
         ]
         return VStack(alignment: .leading, spacing: 6) {
-            Text("Weekdays").font(.caption).foregroundStyle(.secondary)
+            Text(L("Weekdays")).font(.caption).foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 ForEach(labels, id: \.0) { value, title in
                     Toggle(title, isOn: Binding(
@@ -515,7 +514,7 @@ struct EditAgentSheet: View {
     ) -> some View {
         let mode = MonthSelectionMode(months: months)
         return VStack(alignment: .leading, spacing: 8) {
-            Picker("Months", selection: Binding(
+            Picker(L("Months"), selection: Binding(
                 get: { mode },
                 set: { newMode in
                     switch newMode {
@@ -534,10 +533,10 @@ struct EditAgentSheet: View {
                     }
                 }
             )) {
-                Text("Every Month").tag(MonthSelectionMode.all)
-                Text("Quarterly").tag(MonthSelectionMode.quarter)
-                Text("Semi-Annually").tag(MonthSelectionMode.halfYear)
-                Text("Custom Months").tag(MonthSelectionMode.custom)
+                Text(L("Every Month")).tag(MonthSelectionMode.all)
+                Text(L("Quarterly")).tag(MonthSelectionMode.quarter)
+                Text(L("Semi-Annually")).tag(MonthSelectionMode.halfYear)
+                Text(L("Custom Months")).tag(MonthSelectionMode.custom)
             }
             .pickerStyle(.menu)
 
@@ -545,7 +544,7 @@ struct EditAgentSheet: View {
                 let selected = months ?? []
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 6) {
                     ForEach(1...12, id: \.self) { month in
-                        Toggle("\(month)", isOn: Binding(
+                        Toggle(L("\(month)"), isOn: Binding(
                             get: { selected.contains(month) },
                             set: { isOn in
                                 var next = selected
@@ -568,14 +567,14 @@ struct EditAgentSheet: View {
 
     private func monthCaption(months: Set<Int>) -> String {
         let list = months.sorted().map(String.init).joined(separator: ",")
-        return String(format: String(localized: "Months: %@"), locale: .current, list)
+        return String(format: L("Months: %@"), locale: .current, list)
     }
 
     private func intervalEditor(ruleID: UUID, seconds: Int) -> some View {
         let split = IntervalUnit.split(seconds: seconds)
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text("Every")
+                Text(L("Every"))
                     .fixedSize(horizontal: true, vertical: false)
                 TextField(
                     "Value",
@@ -612,11 +611,11 @@ struct EditAgentSheet: View {
                 .fixedSize(horizontal: true, vertical: false)
             }
             if split.unit == .days {
-                Text("Every 24 hours (86400s)")
+                Text(L("Every 24 hours (86400s)"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text("Triggers may be skipped while asleep or already running.")
+            Text(L("Triggers may be skipped while asleep or already running."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -680,7 +679,7 @@ struct EditAgentSheet: View {
                     NSWorkspace.shared.open(url)
                 }
             } label: {
-                Label("Browse Launch Agent Templates…", systemImage: "safari")
+                Label(L("Browse Launch Agent Templates…"), systemImage: "safari")
             }
             .buttonStyle(.link)
             .padding(.vertical, 10)
@@ -691,16 +690,16 @@ struct EditAgentSheet: View {
 
     private func ruleKindTitle(_ kind: TriggerRuleKind) -> String {
         switch kind {
-        case .daily: return String(localized: "Daily")
-        case .weekly: return String(localized: "Weekly")
-        case .monthly: return String(localized: "Monthly")
-        case .yearly: return String(localized: "Yearly")
-        case .interval: return String(localized: "Interval")
-        case .watchPath: return String(localized: "Watch Path")
+        case .daily: return L("Daily")
+        case .weekly: return L("Weekly")
+        case .monthly: return L("Monthly")
+        case .yearly: return L("Yearly")
+        case .interval: return L("Interval")
+        case .watchPath: return L("Watch Path")
         case .customCalendar(_, let isMalformed):
             return isMalformed
-                ? String(localized: "Invalid Config")
-                : String(localized: "Custom Calendar")
+                ? L("Invalid Config")
+                : L("Custom Calendar")
         }
     }
 
@@ -787,7 +786,7 @@ struct EditAgentSheet: View {
         formDisabledReason = nil
         switch plistService.validateXml(xmlText) {
         case .failure:
-            formDisabledReason = String(localized: "This plist contains keys not supported by the form editor. Please edit in XML mode.")
+            formDisabledReason = L("This plist contains keys not supported by the form editor. Please edit in XML mode.")
         case .success(let dict):
             if let reason = plistService.formIncompatibilityReason(for: dict) {
                 formDisabledReason = reason
@@ -1016,7 +1015,7 @@ struct EditAgentSheet: View {
         if editorMode == .xml {
             guard case .success(let dict) = plistService.validateXml(xmlText),
                   let label = dict["Label"] as? String else {
-                errorMessage = xmlError ?? String(localized: "Invalid plist")
+                errorMessage = xmlError ?? L("Invalid plist")
                 return
             }
             let plistURL = existingItem?.plistURL ??
@@ -1130,7 +1129,7 @@ private enum IntervalUnit: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    var localizedName: LocalizedStringKey {
+    var localizedName: String {
         switch self {
         case .seconds: return "Seconds"
         case .minutes: return "Minutes"

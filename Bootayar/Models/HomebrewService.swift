@@ -19,11 +19,11 @@ enum HomebrewServiceStatus: String, Hashable {
 
     var localizedName: String {
         switch self {
-        case .started: return String(localized: "Running")
-        case .stopped: return String(localized: "Stopped")
-        case .none: return String(localized: "Unregistered")
-        case .error: return String(localized: "Error")
-        case .unknown: return String(localized: "Unknown")
+        case .started: return L("Running")
+        case .stopped: return L("Stopped")
+        case .none: return L("Unregistered")
+        case .error: return L("Error")
+        case .unknown: return L("Unknown")
         }
     }
 }

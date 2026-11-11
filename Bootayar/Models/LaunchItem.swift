@@ -36,23 +36,23 @@ struct LaunchItem: Identifiable, Hashable {
             }
         }
 
-        var directoryHint: LocalizedStringKey {
+        var directoryHint: String {
             switch self {
-            case .userAgent:    return "User · ~/Library"
-            case .systemAgent:  return "Global · /Library"
-            case .systemDaemon: return "System · /Library"
+            case .userAgent:    return L("User · ~/Library")
+            case .systemAgent:  return L("Global · /Library")
+            case .systemDaemon: return L("System · /Library")
             }
         }
 
-        var sectionTitle: LocalizedStringKey {
+        var sectionTitle: String {
             switch self {
-            case .userAgent:    return "User Agents"
-            case .systemAgent:  return "Global Agents"
-            case .systemDaemon: return "LaunchDaemons"
+            case .userAgent:    return L("User Agents")
+            case .systemAgent:  return L("Global Agents")
+            case .systemDaemon: return L("LaunchDaemons")
             }
         }
 
-        var sectionSubtitle: LocalizedStringKey {
+        var sectionSubtitle: String {
             switch self {
             case .userAgent:    return "~/Library/LaunchAgents"
             case .systemAgent:  return "/Library/LaunchAgents"
@@ -68,11 +68,11 @@ struct LaunchItem: Identifiable, Hashable {
             }
         }
 
-        var newAgentMenuTitle: LocalizedStringKey {
+        var newAgentMenuTitle: String {
             switch self {
-            case .userAgent:    return "New User Agent"
-            case .systemAgent:  return "New Global Agent"
-            case .systemDaemon: return "New LaunchDaemon"
+            case .userAgent:    return L("New User Agent")
+            case .systemAgent:  return L("New Global Agent")
+            case .systemDaemon: return L("New LaunchDaemon")
             }
         }
 
@@ -128,7 +128,7 @@ struct LaunchItem: Identifiable, Hashable {
         if passthroughCount > 0 {
             lines.append(
                 String(
-                    format: String(localized: "+%lld other trigger conditions"),
+                    format: L("+%lld other trigger conditions"),
                     locale: .current,
                     passthroughCount
                 )
@@ -136,11 +136,11 @@ struct LaunchItem: Identifiable, Hashable {
         }
 
         if runAtLoad {
-            lines.append(String(localized: "Run at Login"))
+            lines.append(L("Run at Login"))
         }
 
         if lines.isEmpty {
-            lines.append(String(localized: "No Automatic Trigger"))
+            lines.append(L("No Automatic Trigger"))
         }
         return lines
     }
@@ -157,27 +157,27 @@ struct LaunchItem: Identifiable, Hashable {
             if let months, !months.isEmpty {
                 let monthList = months.sorted().map(String.init).joined(separator: ",")
                 return String(
-                    format: String(localized: "Monthly · Month %@ · Day %lld at %@"),
+                    format: L("Monthly · Month %@ · Day %lld at %@"),
                     locale: .current,
                     monthList, day, time
                 )
             }
             return String(
-                format: String(localized: "Monthly on day %lld at %@"),
+                format: L("Monthly on day %lld at %@"),
                 locale: .current,
                 day, time
             )
         case .yearly(let month, let day, let hour, let minute):
             let time = timeString(hour: hour, minute: minute)
             return String(
-                format: String(localized: "Yearly on %lld/%lld at %@"),
+                format: L("Yearly on %lld/%lld at %@"),
                 locale: .current,
                 month, day, time
             )
         case .interval(let seconds):
-            return String(localized: "Every \(seconds)s")
+            return L("Every \(seconds)s")
         case .watchPath(let path):
-            return String(localized: "Watch path: \(path)")
+            return L("Watch path: \(path)")
         case .customCalendar(let summary, let isMalformed):
             if isMalformed {
                 return "Invalid Config: \(summary)"
@@ -193,13 +193,13 @@ struct LaunchItem: Identifiable, Hashable {
     private static func formatWeekdays(_ weekdays: [Int]) -> String {
         let weekdayNames = [
             "",
-            String(localized: "Mon"),
-            String(localized: "Tue"),
-            String(localized: "Wed"),
-            String(localized: "Thu"),
-            String(localized: "Fri"),
-            String(localized: "Sat"),
-            String(localized: "Sun"),
+            L("Mon"),
+            L("Tue"),
+            L("Wed"),
+            L("Thu"),
+            L("Fri"),
+            L("Sat"),
+            L("Sun"),
         ]
         let normalized = Array(Set(weekdays.map { $0 == 0 ? 7 : $0 }))
             .filter { (1...7).contains($0) }

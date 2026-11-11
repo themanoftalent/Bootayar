@@ -13,8 +13,8 @@ struct ImportPlistSheet: View {
 
     var body: some View {
         Form {
-            Section("Import Into") {
-                Picker("Scope", selection: $scope) {
+            Section(L("Import Into")) {
+                Picker(L("Scope"), selection: $scope) {
                     ForEach(LaunchItem.Scope.allCases, id: \.self) { s in
                         Text(s.sectionTitle).tag(s)
                     }
@@ -34,22 +34,21 @@ struct ImportPlistSheet: View {
         }
         .formStyle(.grouped)
         .frame(minWidth: 400, minHeight: 180)
-        .navigationTitle("Import Plist")
+        .navigationTitle(L("Import Plist"))
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button(L("Cancel")) { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Import") { importPlist(overwrite: false) }
+                Button(L("Import")) { importPlist(overwrite: false) }
             }
         }
-        .confirmationDialog(
-            "File already exists. Overwrite?",
+        .confirmationDialog(L("File already exists. Overwrite?"),
             isPresented: $showOverwriteConfirm,
             titleVisibility: .visible
         ) {
-            Button("Overwrite", role: .destructive) { importPlist(overwrite: true) }
-            Button("Cancel", role: .cancel) {}
+            Button(L("Overwrite"), role: .destructive) { importPlist(overwrite: true) }
+            Button(L("Cancel"), role: .cancel) {}
         }
     }
 
@@ -59,7 +58,7 @@ struct ImportPlistSheet: View {
             onImported(item)
             dismiss()
         } catch PlistValidationError.invalidFormat(let message) {
-            if message == String(localized: "File already exists") {
+            if message == L("File already exists") {
                 showOverwriteConfirm = true
             } else {
                 inlineError = message

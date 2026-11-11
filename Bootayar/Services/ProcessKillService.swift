@@ -7,9 +7,9 @@ enum ProcessKillError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notKillable(let pid):
-            return String(localized: "Cannot terminate PID \(pid): permission denied")
+            return L("Cannot terminate PID \(pid): permission denied")
         case .signalFailed(let pid, _):
-            return String(localized: "Cannot send signal to PID \(pid)")
+            return L("Cannot send signal to PID \(pid)")
         }
     }
 }

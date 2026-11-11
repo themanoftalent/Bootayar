@@ -42,7 +42,7 @@ enum BootayarTheme {
 // Status badge
 
 struct BootayarStatusBadge: View {
-    let title: LocalizedStringKey
+    let title: String
     let color: Color
     var isPulsing: Bool = false
 
@@ -59,7 +59,7 @@ struct BootayarStatusBadge: View {
                     isPulsing ? .easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default,
                     value: pulse
                 )
-            Text(title)
+            Text(L(title))
                 .font(.system(size: 10.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(color)
                 .lineLimit(1)

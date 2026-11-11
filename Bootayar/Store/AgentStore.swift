@@ -99,7 +99,7 @@ final class AgentStore: ObservableObject {
 
     func bootstrap(_ item: LaunchItem, onError: @escaping (String) -> Void = { _ in }) {
         bumpStatusGeneration()
-        runPending(item.label, .loading, operationName: String(localized: "Load"), onError: onError) {
+        runPending(item.label, .loading, operationName: L("Load"), onError: onError) {
             try await self.runLaunchctl(scope: item.scope) {
                 try self.launchctlService.bootstrap(item.plistURL, scope: item.scope)
             }
@@ -109,7 +109,7 @@ final class AgentStore: ObservableObject {
 
     func bootout(_ item: LaunchItem, onError: @escaping (String) -> Void = { _ in }) {
         bumpStatusGeneration()
-        runPending(item.label, .unloading, operationName: String(localized: "Unload"), onError: onError) {
+        runPending(item.label, .unloading, operationName: L("Unload"), onError: onError) {
             try await self.runLaunchctl(scope: item.scope) {
                 try self.launchctlService.bootout(item.plistURL, scope: item.scope)
             }
@@ -119,7 +119,7 @@ final class AgentStore: ObservableObject {
 
     func start(_ item: LaunchItem, onError: @escaping (String) -> Void = { _ in }) {
         bumpStatusGeneration()
-        runPending(item.label, .starting, operationName: String(localized: "Start"), onError: onError) {
+        runPending(item.label, .starting, operationName: L("Start"), onError: onError) {
             try await self.runLaunchctl(scope: item.scope) {
                 try self.launchctlService.start(item.label, scope: item.scope)
             }
@@ -131,7 +131,7 @@ final class AgentStore: ObservableObject {
 
     func stop(_ item: LaunchItem, onError: @escaping (String) -> Void = { _ in }) {
         bumpStatusGeneration()
-        runPending(item.label, .stopping, operationName: String(localized: "Stop"), onError: onError) {
+        runPending(item.label, .stopping, operationName: L("Stop"), onError: onError) {
             try await self.runLaunchctl(scope: item.scope) {
                 try self.launchctlService.stop(item.label, scope: item.scope)
             }
@@ -140,7 +140,7 @@ final class AgentStore: ObservableObject {
     }
 
     func enable(_ item: LaunchItem, onError: @escaping (String) -> Void = { _ in }) {
-        runPending(item.label, .enabling, operationName: String(localized: "Enable"), onError: onError) {
+        runPending(item.label, .enabling, operationName: L("Enable"), onError: onError) {
             try await self.runLaunchctl(scope: item.scope) {
                 try self.launchctlService.enable(item.label, scope: item.scope)
             }
@@ -191,7 +191,7 @@ final class AgentStore: ObservableObject {
     func cloneItem(_ item: LaunchItem, newLabel: String, scope: LaunchItem.Scope) throws {
         let dest = plistService.directoryURL(for: scope).appendingPathComponent("\(newLabel).plist")
         if FileManager.default.fileExists(atPath: dest.path) {
-            throw PlistValidationError.invalidFormat(String(localized: "Label already exists"))
+            throw PlistValidationError.invalidFormat(L("Label already exists"))
         }
         _ = try plistService.clonePlist(
             from: item.plistURL,
@@ -210,7 +210,7 @@ final class AgentStore: ObservableObject {
         }
         let dest = plistService.directoryURL(for: scope).appendingPathComponent("\(label).plist")
         if FileManager.default.fileExists(atPath: dest.path) && !overwrite {
-            throw PlistValidationError.invalidFormat(String(localized: "File already exists"))
+            throw PlistValidationError.invalidFormat(L("File already exists"))
         }
         try plistService.saveRawXml(xml, to: dest, scope: scope, privilege: privilegeService)
         refresh()
